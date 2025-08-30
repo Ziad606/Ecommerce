@@ -26,10 +26,6 @@
 		</ItemGroup>
 	
   <ItemGroup>
-    <Folder Include="EntitiesConfigurations\" />
-  </ItemGroup>
-	
-  <ItemGroup>
     <ProjectReference Include="..\Ecommerce.Entities\Ecommerce.Entities.csproj" />
     <ProjectReference Include="..\Ecommerce.Utilities\Ecommerce.Utilities.csproj" />
   </ItemGroup>

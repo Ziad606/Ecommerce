@@ -60,21 +60,21 @@ namespace Ecommerce.DataAccess.Services.Auth
                 return _responseHandler.BadRequest<LoginResponse>("Email is not verified. Please verify your email first.");
 
             // If OTP is not provided, generate and send OTP
-            if (string.IsNullOrEmpty(loginRequest.Otp))
-            {
-                var otp = await _otpService.GenerateAndStoreOtpAsync(user.Id);
-                await _emailService.SendOtpEmailAsync(user, otp);
-                return _responseHandler.Success<LoginResponse>(null, "OTP sent to your email. Please provide the OTP to complete login.");
-            }
+            // if (string.IsNullOrEmpty(loginRequest.Otp))
+            // {
+            //     var otp = await _otpService.GenerateAndStoreOtpAsync(user.Id);
+            //     await _emailService.SendOtpEmailAsync(user, otp);
+            //     return _responseHandler.Success<LoginResponse>(null, "OTP sent to your email. Please provide the OTP to complete login.");
+            // }
 
             // Get user roles
             var roles = await _userManager.GetRolesAsync(user);
 
 
             // Verify OTP
-            var isOtpValid = await _otpService.ValidateOtpAsync(user.Id, loginRequest.Otp);
-            if (!isOtpValid)
-                return _responseHandler.BadRequest<LoginResponse>("Invalid or expired OTP.");
+            // var isOtpValid = await _otpService.ValidateOtpAsync(user.Id, loginRequest.Otp);
+            // if (!isOtpValid)
+            //     return _responseHandler.BadRequest<LoginResponse>("Invalid or expired OTP.");
 
             // Generate tokens
             var tokens = await _tokenStoreService.GenerateAndStoreTokensAsync(user.Id, user);
@@ -112,6 +112,7 @@ namespace Ecommerce.DataAccess.Services.Auth
                     UserName = registerRequest.Email, // Modify it by what you need
                     Email = registerRequest.Email,
                     PhoneNumber = registerRequest.PhoneNumber,
+                    EmailConfirmed = true,
                 };
 
                 var createUserResult = await _userManager.CreateAsync(user, registerRequest.Password);
@@ -130,29 +131,29 @@ namespace Ecommerce.DataAccess.Services.Auth
 
                 var tokens = await _tokenStoreService.GenerateAndStoreTokensAsync(user.Id, user);
 
-                var otp = await _otpService.GenerateAndStoreOtpAsync(user.Id);
-
-                // Send OTP via Email
-                await _emailService.SendOtpEmailAsync(user, otp);
-
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                _logger.LogInformation("User registration completed successfully. Email sent to {Email}", registerRequest.Email);
+                // var otp = await _otpService.GenerateAndStoreOtpAsync(user.Id);
+                //
+                // // Send OTP via Email
+                // await _emailService.SendOtpEmailAsync(user, otp);
+                //
+                // await _context.SaveChangesAsync();
+                // await transaction.CommitAsync();
+                //
+                // _logger.LogInformation("User registration completed successfully. Email sent to {Email}", registerRequest.Email);
 
 
                 var response = new RegisterResponse
                 {
                     Email = registerRequest.Email,
                     Id = user.Id,
-                    IsEmailConfirmed = false,
+                    IsEmailConfirmed = true,
                     PhoneNumber = registerRequest.PhoneNumber,
                     Role = "USER",
                     AccessToken = tokens.AccessToken,
                     RefreshToken = tokens.RefreshToken
                 };
 
-                return _responseHandler.Created<RegisterResponse>(response, "User registered successfully. Please check your email to receive the OTP.");
+                return _responseHandler.Created<RegisterResponse>(response, "User registered successfully"); // . Please check your email to receive the OTP.
             }
             catch (Exception ex)
             {

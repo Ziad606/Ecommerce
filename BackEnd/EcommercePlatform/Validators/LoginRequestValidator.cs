@@ -20,9 +20,9 @@ namespace Ecommerce.API.Validators
                 .Matches(@"^\+?\d{10,15}$").When(x => !string.IsNullOrEmpty(x.PhoneNumber))
                 .WithMessage("Phone number must contain only digits and be between 10 and 15 characters.");
 
-            RuleFor(x => x.Otp)
-                .Length(6).When(x => !string.IsNullOrEmpty(x.Otp))
-                .WithMessage("OTP must be 6 characters long.");
+            // RuleFor(x => x.Otp)
+            //     .Length(6).When(x => !string.IsNullOrEmpty(x.Otp))
+            //     .WithMessage("OTP must be 6 characters long.");
 
             RuleFor(x => x.Password)
                 .NotEmpty().WithMessage("Password is required.")

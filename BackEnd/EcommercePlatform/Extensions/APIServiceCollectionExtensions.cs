@@ -38,6 +38,7 @@ namespace Ecommerce.API.Extensions
                 opt.Password.RequiredLength = 8;
                 opt.Password.RequireDigit = true;
                 opt.Password.RequireNonAlphanumeric = true;
+                opt.SignIn.RequireConfirmedEmail = false;
             })
             .AddEntityFrameworkStores<AuthContext>()
             .AddRoleManager<RoleManager<Role>>()

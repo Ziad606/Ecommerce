@@ -2,7 +2,9 @@
 using System.Threading.RateLimiting;
 
 using Ecommerce.API.Validators;
+using Ecommerce.API.Validators.Products;
 using Ecommerce.DataAccess.ApplicationContext;
+using Ecommerce.Entities.DTO.Products;
 using Ecommerce.Entities.Models.Auth.Identity;
 using Ecommerce.Utilities.Configurations;
 
@@ -118,6 +120,8 @@ namespace Ecommerce.API.Extensions
                 fv.RegisterValidatorsFromAssemblyContaining<ForgetPasswordRequestValidator>();
                 fv.RegisterValidatorsFromAssemblyContaining<ResetPasswordRequestValidator>();
                 fv.RegisterValidatorsFromAssemblyContaining<ChangePasswordRequestValidator>();
+                fv.RegisterValidatorsFromAssemblyContaining<CreateProductRequestValidator>();
+                fv.RegisterValidatorsFromAssemblyContaining<ProductImageFileValidator>();
             });
             return services;
         }

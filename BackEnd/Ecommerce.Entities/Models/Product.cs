@@ -24,11 +24,11 @@ namespace Ecommerce.Entities.Models
 
         public Category Category { get; set; }
 
-        public string Dimensions { get; set; } 
+        public string? Dimensions { get; set; } 
 
-        public string Material { get; set; }
+        public string? Material { get; set; }
 
-        public string SKU { get; set; }
+        public string? SKU { get; set; }
         public int StockQuantity { get; set; }
         
         public StockStatus StockStatus { get; set; } = StockStatus.GoodStock; 

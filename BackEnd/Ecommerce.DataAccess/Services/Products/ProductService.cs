@@ -1,0 +1,148 @@
+using Ecommerce.DataAccess.ApplicationContext;
+using Ecommerce.DataAccess.Services.ImageUploading;
+using Ecommerce.Entities.DTO.Products;
+using Ecommerce.Entities.Models;
+using Ecommerce.Entities.Shared.Bases;
+using Google.Apis.Logging;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+
+namespace Ecommerce.DataAccess.Services.Products;
+
+public class ProductService(AuthContext context ,
+    ResponseHandler responseHandler, 
+    ILogger<ProductService> logger,
+    IImageUploadService imageUploadService) : IProductService
+{
+    private readonly AuthContext _context = context;
+    private readonly ResponseHandler _responseHandler = responseHandler;
+    private readonly ILogger<ProductService> _logger = logger;
+    private readonly IImageUploadService _imageUploadService = imageUploadService;
+
+    public async Task<Response<Guid>> AddProductAsync(CreateProductRequest dto)
+    {
+      if (dto == null)
+            {
+                _logger.LogWarning("CreateProductRequest was null.");
+                return responseHandler.BadRequest<Guid>("Product data is required.");
+            }
+
+            
+            var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == dto.CategoryId);
+            if (category == null || category.IsDeleted)
+            {
+                _logger.LogWarning(
+                    "Category with ID {CategoryId} is either not found or deleted.",
+                    dto.CategoryId);
+                return responseHandler.BadRequest<Guid>("Invalid category selected.");
+            }
+
+            var existingProduct = await _context.Products
+                .Include(p => p.Images)
+                .FirstOrDefaultAsync(p =>
+                    p.Name.ToLower().Trim() == dto.Name.ToLower().Trim() &&
+                    p.Description.ToLower().Trim() == dto.Description.ToLower().Trim() &&
+                    p.Price == dto.Price &&
+                    p.CategoryId == dto.CategoryId &&
+                    !p.IsDeleted);
+
+
+            if (existingProduct != null)
+            {
+                existingProduct.StockQuantity += dto.StockQuantity;
+                _context.Products.Update(existingProduct);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Existing product {ProductId} stock increased by admin", existingProduct.Id);
+
+                return responseHandler.Success<Guid>(existingProduct.Id,
+                    "Product already exists. Stock quantity has been updated.");
+            }
+
+            try
+            {
+                var productId = Guid.NewGuid();
+                var product = new Entities.Models.Product
+                {
+                    Id = productId,
+                    Name = dto.Name?.Trim(),
+                    Description = dto.Description?.Trim(),
+                    Price = dto.Price,
+                    CategoryId = dto.CategoryId,
+                    Dimensions = dto.Dimensions?.Trim(),
+                    Material = dto.Material?.Trim(),
+                    SKU = dto.SKU?.Trim(),
+                    StockQuantity = dto.StockQuantity,
+                    CreatedAt = DateTime.UtcNow,
+                    IsActive = true,
+                    IsDeleted = false,
+                    Images = new List<ProductImage>()
+                };
+
+                var images = await UploadImagesAsync(dto.Images, productId);
+                product.Images = images.ToList();
+
+                await _context.Products.AddAsync(product);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation(
+                    "Product {ProductId} created successfully by admin", productId);
+
+                return responseHandler.Created(productId,
+                    "Product created successfully.");
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "Database error while creating product for admin");
+                return responseHandler.InternalServerError<Guid>(
+                    "Database error occurred while creating the product.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error while creating product for admin");
+                return responseHandler.InternalServerError<Guid>(
+                    "An unexpected error occurred while creating the product.");
+            }   
+    }
+    
+    private async Task<IList<ProductImage>> UploadImagesAsync(IEnumerable<IFormFile> files, Guid productId)
+    {
+        var images = new List<ProductImage>();
+        bool isFirstImage = true;
+
+        foreach (var file in files)
+        {
+            try
+            {
+                var result = await _imageUploadService.UploadAsync(file);
+
+                if (result == null || string.IsNullOrEmpty(result))
+                {
+                    _logger.LogError("Failed to upload image {FileName} for product {ProductId}", file.FileName,
+                        productId);
+                    throw new Exception("Image upload failed.");
+                }
+
+                images.Add(new ProductImage
+                {
+                    Id = Guid.NewGuid(),
+                    ImageUrl = result,
+                    ProductId = productId,
+                    CreatedAt = DateTime.UtcNow,
+                    IsPrimary = isFirstImage
+                });
+
+                isFirstImage = false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception while uploading image {FileName} for product {ProductId}",
+                    file.FileName, productId);
+                throw;
+            }
+        }
+
+        return images;
+    }
+}

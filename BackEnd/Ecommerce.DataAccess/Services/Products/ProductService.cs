@@ -105,6 +105,11 @@ public class ProductService(AuthContext context ,
     
     public async Task<Response<PaginatedList<GetProductResponse>>> GetProductsAsync( Expression<Func<Product, bool>> predicate , ProductFilters<ProductSorting> filters,CancellationToken cancellationToken)
     {
+        if (filters?.CategoryId.HasValue == true)
+        {
+            predicate = p => !p.IsDeleted && p.CategoryId == filters.CategoryId;
+        }
+
         var source =  _context.Products
             .Where(predicate)
             .Include(p => p.Images)
@@ -134,6 +139,39 @@ public class ProductService(AuthContext context ,
         
 
         return _responseHandler.Success(result, "Products retrieved successfully.");
+    }
+
+    public async Task<Response<GetProductResponse>> GetProductByIdAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var product = await _context.Products
+            .Include(p => p.Images)
+            .Include(p => p.Category)
+            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+
+        if (product == null)
+        {
+            _logger.LogWarning("Product with id : {Id} not found.", id);
+            return _responseHandler.NotFound<GetProductResponse>("Product not found.");
+        }
+
+        var result = new GetProductResponse
+        {
+            Id = product.Id,
+            Name = product.Name,
+            Description = product.Description,
+            Price = product.Price,
+            CategoryId = product.CategoryId,
+            CategoryName = product.Category?.Name,
+            Dimensions = product.Dimensions,
+            Material = product.Material,
+            SKU = product.SKU,
+            StockQuantity = product.StockQuantity,
+            IsActive = product.IsActive,
+            CreatedAt = product.CreatedAt,
+            ImageUrls = product.Images.Select(img => img.ImageUrl).ToList()
+        };
+
+        return _responseHandler.Success(result, "Product retrieved successfully.");
     }
     public async Task<Response<Guid>> UpdateProductAsync(Guid productId, UpdateProductRequest dto, CancellationToken cancellationToken = default)
         {
@@ -228,6 +266,8 @@ public class ProductService(AuthContext context ,
         return _responseHandler.Success(true,
             "Product deleted successfully and is no longer visible to buyers.");
     }
+
+    
     private async Task<IList<ProductImage>> UploadImagesAsync(IEnumerable<IFormFile> files, Guid productId)
     {
         var images = new List<ProductImage>();
@@ -272,7 +312,14 @@ public class ProductService(AuthContext context ,
         where TSorting : struct, Enum
     {
         
-        query = query.Where(p => p.IsActive == filters.Status);
+        
+        if(filters.PriceStart.HasValue)
+            query = query.Where(p => p.Price >= filters.PriceStart.Value);
+        
+        if(filters.PriceEnd.HasValue)
+            query = query.Where(p => p.Price <= filters.PriceEnd.Value);
+        
+
         
         if (!string.IsNullOrWhiteSpace(filters.SearchValue))
         {

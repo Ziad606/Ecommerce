@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
@@ -6,7 +7,7 @@ using Ecommerce.API.Validators.Products;
 using Ecommerce.DataAccess.ApplicationContext;
 using Ecommerce.Entities.Models.Auth.Identity;
 using Ecommerce.Utilities.Configurations;
-
+using FluentValidation;
 using FluentValidation.AspNetCore;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -125,6 +126,8 @@ namespace Ecommerce.API.Extensions
             .AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
       
       
+        
+        public static IServiceCollection AddResendOtpRateLimiter(this IServiceCollection services)
         {
             services.AddRateLimiter(options =>
             {

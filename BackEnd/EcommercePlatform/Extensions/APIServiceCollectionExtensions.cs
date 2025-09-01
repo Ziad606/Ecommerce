@@ -125,7 +125,6 @@ namespace Ecommerce.API.Extensions
               fv.RegisterValidatorsFromAssemblyContaining<AddCartValidator>();
             });
                 
-			});
             return services;
         }
         public static IServiceCollection AddResendOtpRateLimiter(this IServiceCollection services)

@@ -22,13 +22,7 @@ public class ProductService(AuthContext context ,
 
     public async Task<Response<Guid>> AddProductAsync(CreateProductRequest dto)
     {
-      if (dto == null)
-            {
-                _logger.LogWarning("CreateProductRequest was null.");
-                return responseHandler.BadRequest<Guid>("Product data is required.");
-            }
 
-            
             var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == dto.CategoryId);
             if (category == null || category.IsDeleted)
             {

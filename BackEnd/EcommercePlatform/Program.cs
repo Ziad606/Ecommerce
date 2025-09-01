@@ -57,6 +57,8 @@ namespace EcommercePlatform
                 configuration.AbortOnConnectFail = false;
                 return ConnectionMultiplexer.Connect(configuration);
             });
+            
+            
 
             builder.Services.AddSwagger();
             builder.Services.AddEndpointsApiExplorer();

@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Ecommerce.API.Validators;
 using Ecommerce.API.Validators.Products;
@@ -107,6 +108,10 @@ namespace Ecommerce.API.Extensions
                     }
                 });
             });
+            services
+                .AddControllers() 
+                .AddJsonOptions(options => 
+                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
             return services;
         }

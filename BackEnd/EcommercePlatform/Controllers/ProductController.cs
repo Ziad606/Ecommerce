@@ -1,6 +1,8 @@
 using Ecommerce.DataAccess.Services.Products;
 using Ecommerce.Entities.DTO.Products;
+using Ecommerce.Entities.DTO.Shared.Product;
 using Ecommerce.Entities.Shared.Bases;
+using Ecommerce.Utilities.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -24,12 +26,12 @@ public class ProductController(IProductService productService, ResponseHandler r
    }
    
    [HttpGet("")]
-   public async Task<IActionResult> GetProducts()
+   public async Task<IActionResult> GetProducts([FromQuery] ProductFilters<ProductSorting> filters,CancellationToken cancellationToken)
    {
       if (!ModelState.IsValid)
          return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
       
-      var result = await _productService.GetProductsAsync();
+      var result = await _productService.GetProductsAsync(p => !p.IsDeleted ,filters ,cancellationToken);
       return StatusCode((int)result.StatusCode, result);
    }
    

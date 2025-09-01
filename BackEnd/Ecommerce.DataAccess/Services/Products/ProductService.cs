@@ -3,9 +3,11 @@ using Ecommerce.DataAccess.ApplicationContext;
 using Ecommerce.DataAccess.Services.ImageUploading;
 using Ecommerce.Entities.DTO.Product;
 using Ecommerce.Entities.DTO.Products;
+using Ecommerce.Entities.DTO.Shared.Product;
 using Ecommerce.Entities.Models;
+using Ecommerce.Entities.Shared;
 using Ecommerce.Entities.Shared.Bases;
-using Google.Apis.Logging;
+using Ecommerce.Utilities.Enums;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -100,36 +102,35 @@ public class ProductService(AuthContext context ,
                     "An unexpected error occurred while creating the product.");
             }   
     }
-    public async Task<Response<List<GetProductResponse>>> GetProductsAsync( Expression<Func<Product, bool>> predicate , CancellationToken cancellationToken)
+    public async Task<Response<PaginatedList<GetProductResponse>>> GetProductsAsync( Expression<Func<Product, bool>> predicate , ProductFilters<ProductSorting> filters,CancellationToken cancellationToken)
     {
-        var products = await _context.Products
+        var source =  _context.Products
+            .Where(predicate)
             .Include(p => p.Images)
             .Include(p => p.Category)
-            .Where(predicate)
-            .ToListAsync(cancellationToken);
-
-        if (!products.Any())
-        {
-            _logger.LogWarning("No products found with given predicate.");
-            return _responseHandler.NotFound<List<GetProductResponse>>("No products found.");
-        }
-
-        var result = products.Select(p => new GetProductResponse
-        {
-            Id = p.Id,
-            Name = p.Name,
-            Description = p.Description,
-            Price = p.Price,
-            CategoryId = p.CategoryId,
-            CategoryName = p.Category?.Name,
-            Dimensions = p.Dimensions,
-            Material = p.Material,
-            SKU = p.SKU,
-            StockQuantity = p.StockQuantity,
-            IsActive = p.IsActive,
-            CreatedAt = p.CreatedAt,
-            ImageUrls = p.Images.Select(img => img.ImageUrl).ToList()
-        }).ToList();
+            .AsQueryable();
+        
+        var filteredList = FilteredListItems(source, filters)
+            .Select(p => new GetProductResponse
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+                Price = p.Price,
+                CategoryId = p.CategoryId,
+                CategoryName = p.Category.Name,
+                Dimensions = p.Dimensions ?? string.Empty,
+                Material = p.Material ?? string.Empty,
+                SKU = p.SKU ?? string.Empty,
+                StockQuantity = p.StockQuantity,
+                IsActive = p.IsActive,
+                CreatedAt = p.CreatedAt,
+                ImageUrls = p.Images.Select(img => img.ImageUrl).ToList()
+            });
+            
+        var result = await PaginatedList<GetProductResponse>.CreateAsync(filteredList, filters.PageNumber, filters.PageSize, cancellationToken);
+        
+        
 
         return _responseHandler.Success(result, "Products retrieved successfully.");
     }
@@ -173,5 +174,50 @@ public class ProductService(AuthContext context ,
         }
 
         return images;
+    }
+    
+    private IQueryable<Product> FilteredListItems<TSorting>(IQueryable<Product> query, ProductFilters<TSorting> filters)
+        where TSorting : struct, Enum
+    {
+        
+        query = query.Where(p => p.IsActive == filters.Status);
+        
+        if (!string.IsNullOrWhiteSpace(filters.SearchValue))
+        {
+            var searchValue = filters.SearchValue.ToLower().Trim();
+            query = query.Where(p => 
+                p.Name.ToLower().Contains(searchValue) ||
+                p.Description.ToLower().Contains(searchValue) ||
+                p.SKU.ToLower().Contains(searchValue) ||
+                p.Category.Name.ToLower().Contains(searchValue));
+            
+            _logger.LogInformation("Filtering products by search value: {SearchValue}", filters.SearchValue);
+        }
+
+        
+        if (filters.SortColumn is not null)
+        {
+            query = ApplySorting(query, filters.SortColumn.Value, filters.SortDirection);
+            _logger.LogInformation("Sorting products by {SortProperty} in {SortDirection} order", filters.SortColumn, filters.SortDirection);
+        }
+        else
+        {
+            query = query.OrderByDescending(o => o.CreatedAt);
+        }
+        
+        return query;
+    }
+
+    private static IQueryable<Product> ApplySorting<TSorting>(IQueryable<Product> query, TSorting sortColumn, SortDirection? direction)
+    {
+        var isAscending = direction == SortDirection.ASC;
+
+        return sortColumn switch
+        {
+            ProductSorting.Name => isAscending ? query.OrderBy(o => o.Name) : query.OrderByDescending(p => p.Name),
+            ProductSorting.Price => isAscending ? query.OrderBy(p => p.Price) : query.OrderByDescending(p => p.Price),
+            ProductSorting.CreatedAt => isAscending ? query.OrderBy(p => p.CreatedAt) : query.OrderByDescending(p => p.CreatedAt),
+            _ => query.OrderByDescending(p => p.CreatedAt)
+        };
     }
 }

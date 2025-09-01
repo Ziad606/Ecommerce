@@ -11,5 +11,7 @@ namespace Ecommerce.DataAccess.Services.Order
     public interface IOrderService
     {
         Task<Response<Guid>> CreateOrderAsync(CreateOrderRequest dto);
+        Task<Response<GetOrdersResponse>> GetOrdersAsync(GetOrdersRequest dto);
+
     }
 }

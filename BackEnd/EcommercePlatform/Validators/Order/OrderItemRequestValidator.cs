@@ -3,7 +3,7 @@ using FluentValidation;
 
 namespace Ecommerce.API.Validators.Order
 {
-    public class OrderItemRequestValidator : AbstractValidator<OrderItemRequest>
+    public class OrderItemRequestValidator : AbstractValidator<OrderItem>
     {
         public OrderItemRequestValidator() {
             RuleFor(x => x.ProductId)

@@ -16,6 +16,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 using Serilog;
+using Ecommerce.Business.Validators.Cart;
 using FluentValidation;
 using System.Reflection;
 
@@ -119,8 +120,7 @@ namespace Ecommerce.API.Extensions
 
             return services;
         }
-      
-      
+
         public static IServiceCollection AddFluentValidation(this IServiceCollection services) =>
             services.AddFluentValidationAutoValidation()
             .AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());

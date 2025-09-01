@@ -126,6 +126,8 @@ namespace Ecommerce.API.Extensions
                 fv.RegisterValidatorsFromAssemblyContaining<ChangePasswordRequestValidator>();
                 fv.RegisterValidatorsFromAssemblyContaining<CreateProductRequestValidator>();
                 fv.RegisterValidatorsFromAssemblyContaining<ProductImageFileValidator>();
+                fv.RegisterValidatorsFromAssemblyContaining<UpdateproductRequestValidator>();
+                
             });
             return services;
         }

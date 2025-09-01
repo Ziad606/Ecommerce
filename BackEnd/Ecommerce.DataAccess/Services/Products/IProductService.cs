@@ -13,6 +13,7 @@ public interface IProductService
 {
         Task<Response<Guid>> AddProductAsync(CreateProductRequest dto, CancellationToken cancellationToken = default);
         Task<Response<PaginatedList<GetProductResponse>>> GetProductsAsync( Expression<Func<Product, bool>> predicate , ProductFilters<ProductSorting> filters,CancellationToken cancellationToken = default);
+        Task<Response<Guid>> UpdateProductAsync(Guid productId, UpdateProductRequest dto,
+                CancellationToken cancellationToken = default);
 
-            
 }

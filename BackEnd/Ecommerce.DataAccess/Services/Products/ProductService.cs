@@ -102,6 +102,7 @@ public class ProductService(AuthContext context ,
                     "An unexpected error occurred while creating the product.");
             }   
     }
+    
     public async Task<Response<PaginatedList<GetProductResponse>>> GetProductsAsync( Expression<Func<Product, bool>> predicate , ProductFilters<ProductSorting> filters,CancellationToken cancellationToken)
     {
         var source =  _context.Products
@@ -206,6 +207,27 @@ public class ProductService(AuthContext context ,
 
         }    
     
+    public async Task<Response<bool>> DeleteProductAsync(Guid productId, CancellationToken cancellationToken = default)
+    {
+        var product = await _context.Products
+            .FirstOrDefaultAsync(p =>
+                p.Id == productId && !p.IsDeleted, cancellationToken);
+        if (product == null)
+        {
+            _logger.LogWarning("Delete failed: Product {ProductId} not found.", productId);
+            return _responseHandler.NotFound<bool>("Product not found.");
+        }
+
+        product.IsDeleted = true;
+        product.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Product {ProductId} soft-deleted", productId);
+
+        return _responseHandler.Success(true,
+            "Product deleted successfully and is no longer visible to buyers.");
+    }
     private async Task<IList<ProductImage>> UploadImagesAsync(IEnumerable<IFormFile> files, Guid productId)
     {
         var images = new List<ProductImage>();

@@ -47,4 +47,12 @@ public class ProductController(IProductService productService, ResponseHandler r
       var result = await _productService.UpdateProductAsync(id, request, cancellationToken);
       return StatusCode((int)result.StatusCode, result);
    }
+
+   [HttpDelete("")]
+   [Authorize(Roles = "Admin")]
+   public async Task<IActionResult> DeleteProduct([FromQuery] Guid id, CancellationToken cancellationToken)
+   {
+      var result = await  _productService.DeleteProductAsync(id, cancellationToken);
+      return StatusCode((int)result.StatusCode, result);
+   }
 }

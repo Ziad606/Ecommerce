@@ -11,6 +11,8 @@ using Ecommerce.DataAccess.Services.OTP;
 
 using Ecommerce.DataAccess.Services.Products;
 using Ecommerce.DataAccess.Services.Token;
+using Ecommerce.Services.Implementations;
+using Ecommerce.Services.Interfaces;
 using Ecommerce.Utilities.Configurations;
 
 using Microsoft.EntityFrameworkCore;
@@ -38,10 +40,14 @@ namespace Ecommerce.DataAccess.Extensions
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IAuthGoogleService, AuthGoogleService>();
             services.AddScoped<IProductService, ProductService>();
+<<<<<<< HEAD
             services.AddScoped<IOrderService, OrderService>();
 
+=======
+			      services.AddScoped<ICartService, CartService>();
+>>>>>>> 471b6e93f56650bbe20ad1725b18a1278b6b8e31
 
-            return services;
+			return services;
         }
 
         public static IServiceCollection AddEmailServices(this IServiceCollection services, IConfiguration configuration)

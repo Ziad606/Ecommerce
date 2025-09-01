@@ -1,7 +1,6 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 using Ecommerce.Utilities.Enums;
 using Newtonsoft.Json.Converters;
-
 namespace Ecommerce.Entities.DTO.Shared;
 public class RequestFilters<TSortColumn>
     where TSortColumn : struct, Enum

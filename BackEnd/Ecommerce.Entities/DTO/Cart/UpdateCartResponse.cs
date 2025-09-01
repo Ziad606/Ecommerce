@@ -6,7 +6,10 @@ using System.Threading.Tasks;
 
 namespace Ecommerce.Entities.DTO.Cart
 {
-	internal class UpdateCartResponse
+	public class UpdateCartResponse
 	{
+		public Guid Id { get; set; }          // cart item id
+		public int Quantity { get; set; }
+		public decimal Subtotal { get; set; }  
 	}
 }

@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace Ecommerce.Entities.DTO.Cart
 {
-	internal class UpdateCartRequest
+	public class UpdateCartRequest
 	{
+		public int Quantity { get; set; }
 	}
 }

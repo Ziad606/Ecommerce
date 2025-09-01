@@ -1,4 +1,5 @@
 ﻿using Ecommerce.DataAccess.ApplicationContext;
+using Ecommerce.Entities.DTO.Cart;
 using Ecommerce.Entities.DTO.CartDTOs;
 using Ecommerce.Entities.Models;
 using Ecommerce.Services.Interfaces;
@@ -128,6 +129,41 @@ namespace Ecommerce.Services.Implementations
 				TotalPrice = totalPrice,
 				CreatedAt = cart.CreatedAt,
 				UpdatedAt = cart.UpdatedAt
+			};
+		}
+
+		public async Task<UpdateCartResponse> UpdateCartItemQuantityAsync(
+			string buyerId, Guid cartItemId, int quantity, CancellationToken ct = default)
+		{
+			var cartItem = await _context.Set<CartItem>()
+				.Include(ci => ci.Cart)
+				.Include(ci => ci.Product)
+				.FirstOrDefaultAsync(ci => ci.Id == cartItemId && ci.Cart.BuyerId == buyerId, ct);
+
+			if (cartItem is null || cartItem.Product is null)
+				return null;
+
+			// تحقق من المخزون
+			if (cartItem.Product.StockQuantity < quantity)
+				return new UpdateCartResponse
+				{
+					Id = cartItem.Id,
+					Quantity = -1, // إشارة لفشل المخزون
+					Subtotal = 0
+				};
+
+			cartItem.Quantity = quantity;
+			cartItem.UpdatedAt = DateTime.UtcNow;
+			cartItem.Cart.UpdatedAt = DateTime.UtcNow;
+
+			var subtotal = cartItem.Product.Price * cartItem.Quantity;
+			await _context.SaveChangesAsync(ct);
+
+			return new UpdateCartResponse
+			{
+				Id = cartItem.Id,
+				Quantity = cartItem.Quantity,
+				Subtotal = subtotal
 			};
 		}
 	}

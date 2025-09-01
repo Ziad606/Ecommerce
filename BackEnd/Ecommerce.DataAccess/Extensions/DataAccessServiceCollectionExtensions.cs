@@ -7,6 +7,8 @@ using Ecommerce.DataAccess.Services.Email;
 using Ecommerce.DataAccess.Services.ImageUploading;
 using Ecommerce.DataAccess.Services.OAuth;
 using Ecommerce.DataAccess.Services.OTP;
+
+using Ecommerce.DataAccess.Services.Products;
 using Ecommerce.DataAccess.Services.Token;
 using Ecommerce.Services.Implementations;
 using Ecommerce.Services.Interfaces;
@@ -36,7 +38,8 @@ namespace Ecommerce.DataAccess.Extensions
             services.AddScoped<ITokenStoreService, TokenStoreService>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IAuthGoogleService, AuthGoogleService>();
-			services.AddScoped<ICartService, CartService>();
+            services.AddScoped<IProductService, ProductService>();
+			      services.AddScoped<ICartService, CartService>();
 
 			return services;
         }

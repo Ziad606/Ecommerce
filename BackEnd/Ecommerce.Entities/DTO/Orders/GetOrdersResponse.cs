@@ -6,7 +6,12 @@ using System.Threading.Tasks;
 
 namespace Ecommerce.Entities.DTO.Orders
 {
-    internal class GetOrdersResponse
+    public class GetOrdersResponse
     {
+        public List<OrderSummaryDto> Orders { get; set; } = new();
+        public int TotalCount { get; set; }
+        public int PageNumber { get; set; }
+        public int PageSize { get; set; }
+        public bool IsEmpty => Orders.Count == 0;
     }
 }

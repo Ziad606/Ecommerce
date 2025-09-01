@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Ecommerce.Entities.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,7 +7,21 @@ using System.Threading.Tasks;
 
 namespace Ecommerce.Entities.DTO.Orders
 {
-    internal class OrderDetailsResponse
+    public class OrderDetailsResponse
     {
+        public string OrderId { get; set; }
+        public string BuyerName { get; set; }
+        public string Status { get; set; }
+        public decimal TotalAmount { get; set; }
+        public List<ProductItemDto> Products { get; set; }
+        public string ShippingAddress { get; set; }
+    }
+
+    public class ProductItemDto
+    {
+        public string ProductName { get; set; }
+        public ProductImage ProdcutImage { get; set; }
+        public int Quantity { get; set; }
+        public decimal UnitPrice { get; set; }
     }
 }

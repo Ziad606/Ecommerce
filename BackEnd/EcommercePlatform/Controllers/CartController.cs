@@ -71,5 +71,51 @@ namespace Ecommerce.API.Controllers
 				return StatusCode((int)errorResponse.StatusCode, errorResponse);
 			}
 		}
+
+		/// <summary>
+		/// Get current user's cart
+		/// </summary>
+		[HttpGet]
+		public async Task<IActionResult> GetCart()
+		{
+			try
+			{
+				// Get buyer id from claims
+				var buyerId = User?.Identity?.Name;
+				if (string.IsNullOrEmpty(buyerId))
+				{
+					var unauthorized = _responseHandler.Unauthorized<string>("User not authenticated");
+					return StatusCode((int)unauthorized.StatusCode, unauthorized);
+				}
+
+				// Call service
+				var cartResponse = await _cartService.GetCartAsync(buyerId);
+
+				if (cartResponse == null)
+				{
+					// إرجاع كارت فاضي لو مافيش كارت
+					var emptyCart = new GetCartResponse
+					{
+						Id = Guid.Empty,
+						Items = new List<CartItemDetailsDto>(),
+						TotalItems = 0,
+						TotalPrice = 0,
+						CreatedAt = DateTime.UtcNow,
+						UpdatedAt = null
+					};
+					var emptyResponse = _responseHandler.Success(emptyCart, "Your cart is empty");
+					return StatusCode((int)emptyResponse.StatusCode, emptyResponse);
+				}
+
+				// إرجاع الكارت مع البيانات
+				var successResponse = _responseHandler.Success(cartResponse, "Cart retrieved successfully");
+				return StatusCode((int)successResponse.StatusCode, successResponse);
+			}
+			catch (Exception ex)
+			{
+				var errorResponse = _responseHandler.ServerError<string>(ex.Message);
+				return StatusCode((int)errorResponse.StatusCode, errorResponse);
+			}
+		}
 	}
 }

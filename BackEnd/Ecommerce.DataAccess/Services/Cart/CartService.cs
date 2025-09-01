@@ -93,5 +93,45 @@ namespace Ecommerce.Services.Implementations
 				Quantity = targetCartItem.Quantity
 			};
 		}
+
+		public async Task<GetCartResponse?> GetCartAsync(string buyerId)
+		{
+			// جلب الكارت مع كل البيانات المطلوبة
+			var cart = await _context.Carts
+				.Include(c => c.CartItems)
+				.ThenInclude(ci => ci.Product)
+				.ThenInclude(p => p.Images)
+				.FirstOrDefaultAsync(c => c.BuyerId == buyerId);
+
+			if (cart == null)
+				return null; // مافيش كارت للـ user ده
+
+			// تحويل CartItems إلى CartItemDetailsDto
+			var cartItemsDto = cart.CartItems.Select(ci => new CartItemDetailsDto
+			{
+				Id = ci.Id,
+				ProductId = ci.ProductId,
+				ProductName = ci.Product.Name,
+				ProductPrice = ci.Product.Price,
+				ProductImage = ci.Product.Images?.FirstOrDefault()?.ImageUrl,
+				Quantity = ci.Quantity,
+				StockStatus = ci.Product.StockStatus.ToString(),
+				StockQuantity = ci.Product.StockQuantity
+			}).ToList();
+
+			// حساب المجاميع
+			var totalItems = cartItemsDto.Sum(item => item.Quantity);
+			var totalPrice = cartItemsDto.Sum(item => item.Subtotal);
+
+			return new GetCartResponse
+			{
+				Id = cart.Id,
+				Items = cartItemsDto,
+				TotalItems = totalItems,
+				TotalPrice = totalPrice,
+				CreatedAt = cart.CreatedAt,
+				UpdatedAt = cart.UpdatedAt
+			};
+		}
 	}
 }

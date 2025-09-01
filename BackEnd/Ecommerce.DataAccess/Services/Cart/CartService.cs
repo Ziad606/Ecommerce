@@ -31,8 +31,6 @@ namespace Ecommerce.Services.Implementations
 			// دور على الكارت بتاع الـ Buyer
 			var cart = await _context.Carts
 				.Include(c => c.CartItems)
-				.ThenInclude(ci => ci.Product)
-				.ThenInclude(p => p.Images)
 				.FirstOrDefaultAsync(c => c.BuyerId == buyerId);
 
 			if (cart == null)
@@ -71,8 +69,7 @@ namespace Ecommerce.Services.Implementations
 					CartId = cart.Id,
 					ProductId = dto.ProductId,
 					Quantity = dto.Quantity,
-					CreatedAt = DateTime.UtcNow,
-					Product = product // ربط المنتج للحصول على البيانات
+					CreatedAt = DateTime.UtcNow
 				};
 				cart.CartItems.Add(newCartItem);
 				targetCartItem = newCartItem;
@@ -115,7 +112,7 @@ namespace Ecommerce.Services.Implementations
 				ProductPrice = ci.Product.Price,
 				ProductImage = ci.Product.Images?.FirstOrDefault()?.ImageUrl,
 				Quantity = ci.Quantity,
-				StockStatus = ci.Product.StockStatus.ToString(),
+				StockStatus = ci.Product.StockStatus.ToString(), // دلوقتي هيشتغل عادي
 				StockQuantity = ci.Product.StockQuantity
 			}).ToList();
 

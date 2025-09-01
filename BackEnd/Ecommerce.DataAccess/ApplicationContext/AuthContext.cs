@@ -32,7 +32,18 @@ namespace Ecommerce.DataAccess.ApplicationContext
             modelBuilder.ApplyConfiguration(new WishlistEntityConfiguration());
             modelBuilder.ApplyConfiguration(new WishlistItemEntityConfiguration());
             modelBuilder.ApplyConfiguration(new ReviewEntityConfiguration());
-        }
+			// Configure StockStatus enum conversion
+			modelBuilder.Entity<Product>()
+				.Property(p => p.StockStatus)
+				.HasConversion(
+					// Convert from Enum to Database string
+					v => v == Utilities.Enums.StockStatus.GoodStock ? "InStock" :
+						 v == Utilities.Enums.StockStatus.LowStock ? "LowStock" : "OutOfStock",
+					// Convert from Database string to Enum
+					v => v == "InStock" ? Utilities.Enums.StockStatus.GoodStock :
+						 v == "LowStock" ? Utilities.Enums.StockStatus.LowStock : Utilities.Enums.StockStatus.OutOfStock
+				);
+		}
 
         public DbSet<UserRefreshToken> UserRefreshTokens { get; set; }
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }

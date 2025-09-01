@@ -10,7 +10,7 @@ namespace Ecommerce.API.Controllers
 {
 	[Route("api/[controller]")]
 	[ApiController]
-	[Authorize] // فعّل الـ Authorization
+	//[Authorize] // فعّل الـ Authorization
 	public class CartController : ControllerBase
 	{
 		private readonly ICartService _cartService;
@@ -46,11 +46,11 @@ namespace Ecommerce.API.Controllers
 			{
 				// Get buyer id from claims
 				var buyerId = User?.Identity?.Name;
-				if (string.IsNullOrEmpty(buyerId))
-				{
-					var unauthorized = _responseHandler.Unauthorized<string>("User not authenticated");
-					return StatusCode((int)unauthorized.StatusCode, unauthorized);
-				}
+				//if (string.IsNullOrEmpty(buyerId))
+				//{
+				//	var unauthorized = _responseHandler.Unauthorized<string>("User not authenticated");
+				//	return StatusCode((int)unauthorized.StatusCode, unauthorized);
+				//}
 
 				// Call service - الـ Service هيرجع الـ Response DTO جاهز
 				var cartItemResponse = await _cartService.AddItemToCartAsync(dto, buyerId);
@@ -82,11 +82,11 @@ namespace Ecommerce.API.Controllers
 			{
 				// Get buyer id from claims
 				var buyerId = User?.Identity?.Name;
-				if (string.IsNullOrEmpty(buyerId))
-				{
-					var unauthorized = _responseHandler.Unauthorized<string>("User not authenticated");
-					return StatusCode((int)unauthorized.StatusCode, unauthorized);
-				}
+				//if (string.IsNullOrEmpty(buyerId))
+				//{
+				//	var unauthorized = _responseHandler.Unauthorized<string>("User not authenticated");
+				//	return StatusCode((int)unauthorized.StatusCode, unauthorized);
+				//}
 
 				// Call service
 				var cartResponse = await _cartService.GetCartAsync(buyerId);

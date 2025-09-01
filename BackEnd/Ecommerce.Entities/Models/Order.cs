@@ -11,10 +11,10 @@ namespace Ecommerce.Entities.Models
         public Guid Id { get; set; }
 
         [Required]
-        public string BuyerId { get; set; }
+        public string BuyerId { get; set; } = string.Empty;
 
         [ForeignKey(nameof(BuyerId))]
-        public User Buyer { get; set; }
+        public User Buyer { get; set; } = default!;
 
         // [Required]
         // public string SellerId { get; set; }
@@ -26,12 +26,11 @@ namespace Ecommerce.Entities.Models
 
         public decimal TotalPrice { get; set; }
 
-        public string ShippingAddress { get; set; }
+        public string ShippingAddress { get; set; }= string.Empty;
         public decimal ShippingPrice { get; set; }
-       
-        public string TrackingNumber { get; set; }
-
-        public string CourierService { get; set; }
+        public string TrackingNumber { get; set; } = string.Empty;
+                                                  
+        public string CourierService { get; set; } = string.Empty;
         public bool IsDeleted { get; set; }
 
         public DateTime OrderDate { get; set; } = DateTime.UtcNow;
@@ -46,6 +45,8 @@ namespace Ecommerce.Entities.Models
 
         public DateTime? UpdatedAt { get; set; }
 
-        public List<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+        public List<OrderItem> OrderItems { get; set; } = [];
+
+        public ICollection<Payment> Payments { get; set; } = [];
     }
 }

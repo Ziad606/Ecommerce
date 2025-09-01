@@ -26,14 +26,14 @@ namespace Ecommerce.DataAccess.Services.Order
 
         public async Task<Response<Guid>> CreateOrderAsync(CreateOrderRequest dto)
         {
-            if(dto == null)
+            if (dto == null)
             {
                 _logger.LogWarning("Order data was null.");
                 return _responseHandler.BadRequest<Guid>("Order data is required.");
             }
 
             var buyer = await _context.Users.FirstOrDefaultAsync(u => u.Id.ToString() == dto.BuyerId.ToString());
-            if(buyer == null)
+            if (buyer == null)
             {
                 _logger.LogWarning("Buyer with ID {BuyerId} not found.", dto.BuyerId);
                 return _responseHandler.BadRequest<Guid>("Invalid buyer.");
@@ -74,14 +74,64 @@ namespace Ecommerce.DataAccess.Services.Order
                     UnitPrice = product.Price
                 });
             }
-                await _context.Orders.AddAsync(order);
-                await _context.SaveChangesAsync();
+            await _context.Orders.AddAsync(order);
+            await _context.SaveChangesAsync();
 
-               _logger.LogInformation("Order {OrderId} created successfully for buyer {BuyerId}", order.Id, dto.BuyerId);
-               
-                return _responseHandler.Created<Guid>(order.Id, "Order created successfully.");
+            _logger.LogInformation("Order {OrderId} created successfully for buyer {BuyerId}", order.Id, dto.BuyerId);
+
+            return _responseHandler.Created<Guid>(order.Id, "Order created successfully.");
+        }
+        public async Task<Response<GetOrdersResponse>> GetOrdersAsync(GetOrdersRequest query)
+        {
+            try
+            {
+                var queryable = _context.Orders
+                    .Include(o => o.Buyer)
+                    .AsQueryable();
+
+                // Apply filtering
+                if (query.Status.HasValue)
+                    queryable = queryable.Where(o => o.Status == query.Status);
+
+                if (!string.IsNullOrEmpty(query.SearchTerm))
+                    queryable = queryable.Where(o => o.Id.ToString().Contains(query.SearchTerm) ||
+                                                     o.Buyer.FirstName.Contains(query.SearchTerm) || 
+                                                     o.Buyer.LastName.Contains(query.SearchTerm));
+
+                // Get total count for pagination
+                var totalItems = await queryable.CountAsync();
+
+                // Apply pagination
+                var items = await queryable
+                    .OrderByDescending(o => o.OrderDate)  // Default sort per API contract
+                    .Select(o => new OrderSummaryDto
+                    {
+                        OrderId = o.Id,
+                        BuyerName = o.Buyer.FirstName +" " + o.Buyer.LastName,
+                        Status = o.Status,
+                        TotalPrice = o.TotalPrice
+                    })
+                    .ToListAsync();
+
+                if (!items.Any())
+                    return _responseHandler.NotFound<GetOrdersResponse>("No orders found.");
+
+                var result = new GetOrdersResponse
+                {
+                    Orders = items,
+                    TotalCount = totalItems,
+                    PageNumber = query.PageNumber,
+                    PageSize = query.PageSize
+                };
+                _logger.LogInformation("Retrieved {Count} orders out of {Total} total.", items.Count, totalItems);
+                return _responseHandler.Success<GetOrdersResponse>(result, "Orders retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving orders.");
+                return _responseHandler.InternalServerError<GetOrdersResponse>("Failed to retrieve orders: " + ex.Message);
+            }
         }
 
-        }
     }
-
+}

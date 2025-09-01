@@ -46,5 +46,16 @@ namespace Ecommerce.DataAccess.Services.ImageUploading
 
             return result.Url?.ToString() ?? throw new Exception("Cloudinary returned empty URL.");
         }
+
+        public async Task<bool> DeleteAsync(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+                return false;
+
+            var deletionParams = new DeletionParams(url);
+            var result = await _cloudinary.DestroyAsync(deletionParams);
+
+            return result.Result == "ok";
+        }
     }
 }

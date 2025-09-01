@@ -1,7 +1,6 @@
 ﻿using System.Text;
 using System.Threading.RateLimiting;
-
-
+using Ecommerce.API.Validators;
 using Ecommerce.API.Validators.Products;
 using Ecommerce.DataAccess.ApplicationContext;
 using Ecommerce.Entities.DTO.Products;

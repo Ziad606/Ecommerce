@@ -22,4 +22,17 @@ public class ProductController(IProductService productService, ResponseHandler r
       var result = await _productService.AddProductAsync(request);
       return StatusCode((int)result.StatusCode, result);
    }
+   
+   [HttpGet("")]
+   public async Task<IActionResult> GetProducts()
+   {
+      if (!ModelState.IsValid)
+         return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
+      
+      var result = await _productService.GetProductsAsync();
+      return StatusCode((int)result.StatusCode, result);
+   }
+   
+   
+   
 }

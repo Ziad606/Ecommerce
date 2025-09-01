@@ -1,5 +1,7 @@
+using System.Linq.Expressions;
 using Ecommerce.DataAccess.ApplicationContext;
 using Ecommerce.DataAccess.Services.ImageUploading;
+using Ecommerce.Entities.DTO.Product;
 using Ecommerce.Entities.DTO.Products;
 using Ecommerce.Entities.Models;
 using Ecommerce.Entities.Shared.Bases;
@@ -20,15 +22,8 @@ public class ProductService(AuthContext context ,
     private readonly ILogger<ProductService> _logger = logger;
     private readonly IImageUploadService _imageUploadService = imageUploadService;
 
-    public async Task<Response<Guid>> AddProductAsync(CreateProductRequest dto)
+    public async Task<Response<Guid>> AddProductAsync(CreateProductRequest dto, CancellationToken cancellationToken)
     {
-      if (dto == null)
-            {
-                _logger.LogWarning("CreateProductRequest was null.");
-                return responseHandler.BadRequest<Guid>("Product data is required.");
-            }
-
-            
             var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == dto.CategoryId);
             if (category == null || category.IsDeleted)
             {
@@ -63,7 +58,7 @@ public class ProductService(AuthContext context ,
             try
             {
                 var productId = Guid.NewGuid();
-                var product = new Entities.Models.Product
+                var product = new Product
                 {
                     Id = productId,
                     Name = dto.Name?.Trim(),
@@ -105,6 +100,40 @@ public class ProductService(AuthContext context ,
                     "An unexpected error occurred while creating the product.");
             }   
     }
+    public async Task<Response<List<GetProductResponse>>> GetProductsAsync( Expression<Func<Product, bool>> predicate , CancellationToken cancellationToken)
+    {
+        var products = await _context.Products
+            .Include(p => p.Images)
+            .Include(p => p.Category)
+            .Where(predicate)
+            .ToListAsync(cancellationToken);
+
+        if (!products.Any())
+        {
+            _logger.LogWarning("No products found with given predicate.");
+            return _responseHandler.NotFound<List<GetProductResponse>>("No products found.");
+        }
+
+        var result = products.Select(p => new GetProductResponse
+        {
+            Id = p.Id,
+            Name = p.Name,
+            Description = p.Description,
+            Price = p.Price,
+            CategoryId = p.CategoryId,
+            CategoryName = p.Category?.Name,
+            Dimensions = p.Dimensions,
+            Material = p.Material,
+            SKU = p.SKU,
+            StockQuantity = p.StockQuantity,
+            IsActive = p.IsActive,
+            CreatedAt = p.CreatedAt,
+            ImageUrls = p.Images.Select(img => img.ImageUrl).ToList()
+        }).ToList();
+
+        return _responseHandler.Success(result, "Products retrieved successfully.");
+    }
+    
     
     private async Task<IList<ProductImage>> UploadImagesAsync(IEnumerable<IFormFile> files, Guid productId)
     {

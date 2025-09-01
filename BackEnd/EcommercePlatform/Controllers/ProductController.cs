@@ -36,7 +36,17 @@ public class ProductController(IProductService productService, ResponseHandler r
       var result = await _productService.GetProductsAsync(p => !p.IsDeleted ,filters ,cancellationToken);
       return StatusCode((int)result.StatusCode, result);
    }
+   
+   [HttpGet("{id:guid}")]
+   [Authorize(Roles = "Admin,User")]
+   public async Task<ActionResult<Response<GetProductResponse>>> GetProductById(Guid id, CancellationToken cancellationToken)
+   {
+      var result = await _productService.GetProductByIdAsync(id, cancellationToken);
+      return StatusCode((int)result.StatusCode, result);
+   }
 
+
+   
    [HttpPut("{id:guid}")]
    [Authorize(Roles = "Admin")]
    public async Task<IActionResult> UpdateProduct([FromRoute] Guid id, [FromForm] UpdateProductRequest request, CancellationToken cancellationToken)

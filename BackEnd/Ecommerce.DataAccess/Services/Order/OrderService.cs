@@ -82,6 +82,11 @@ namespace Ecommerce.DataAccess.Services.Order
                 return _responseHandler.Created<Guid>(order.Id, "Order created successfully.");
         }
 
+        public Task<Response<> GetAllOrdersAsync()
+        {
+
+        }
+
         }
     }
-}
+

@@ -1,10 +1,6 @@
 ﻿using System.Text;
 using System.Threading.RateLimiting;
-using Ecommerce.API.Validators;
-using Ecommerce.API.Validators.Products;
-using Ecommerce.API.Validators.CartValidators;
 using Ecommerce.DataAccess.ApplicationContext;
-using Ecommerce.Entities.DTO.Products;
 using Ecommerce.Entities.Models.Auth.Identity;
 using Ecommerce.Utilities.Configurations;
 
@@ -16,11 +12,15 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 using Serilog;
+using FluentValidation;
+using System.Reflection;
 
 namespace Ecommerce.API.Extensions
 {
     public static class APIServiceCollectionExtensions
     {
+        private static Assembly Assemply;
+
         public static IHostBuilder UseSerilogLogging(this IHostBuilder hostBuilder)
         {
             return hostBuilder.UseSerilog((context, configuration) =>
@@ -61,7 +61,7 @@ namespace Ecommerce.API.Extensions
                 var jwtSettings = configuration.GetSection("JWT").Get<JwtSettings>();
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    ValidateIssuer = !string.IsNullOrEmpty(jwtSettings.Issuer),
+                    ValidateIssuer = !string.IsNullOrEmpty(jwtSettings!.Issuer),
                     ValidIssuer = jwtSettings.Issuer,
                     ValidateAudience = !string.IsNullOrEmpty(jwtSettings.Audience),
                     ValidAudience = jwtSettings.Audience,
@@ -111,22 +111,27 @@ namespace Ecommerce.API.Extensions
 
             return services;
         }
-        public static IServiceCollection AddFluentValidation(this IServiceCollection services)
-        {
-            services.AddControllers().AddFluentValidation(fv =>
-            {
-                fv.RegisterValidatorsFromAssemblyContaining<RegisterRequestValidator>();
-                fv.RegisterValidatorsFromAssemblyContaining<LoginRequestValidator>();
-                fv.RegisterValidatorsFromAssemblyContaining<ForgetPasswordRequestValidator>();
-                fv.RegisterValidatorsFromAssemblyContaining<ResetPasswordRequestValidator>();
-                fv.RegisterValidatorsFromAssemblyContaining<ChangePasswordRequestValidator>();
-                fv.RegisterValidatorsFromAssemblyContaining<CreateProductRequestValidator>();
-                fv.RegisterValidatorsFromAssemblyContaining<ProductImageFileValidator>();
-              fv.RegisterValidatorsFromAssemblyContaining<AddCartValidator>();
-            });
-                
-            return services;
-        }
+        #region Update fluent Validation
+        //public static IServiceCollection AddFluentValidation(this IServiceCollection services)
+        //{
+        //    services.AddControllers().AddFluentValidation(fv =>
+        //    {
+        //        fv.RegisterValidatorsFromAssemblyContaining<RegisterRequestValidator>();
+        //        fv.RegisterValidatorsFromAssemblyContaining<LoginRequestValidator>();
+        //        fv.RegisterValidatorsFromAssemblyContaining<ForgetPasswordRequestValidator>();
+        //        fv.RegisterValidatorsFromAssemblyContaining<ResetPasswordRequestValidator>();
+        //        fv.RegisterValidatorsFromAssemblyContaining<ChangePasswordRequestValidator>();
+        //        fv.RegisterValidatorsFromAssemblyContaining<CreateProductRequestValidator>();
+        //        fv.RegisterValidatorsFromAssemblyContaining<ProductImageFileValidator>();
+        //      fv.RegisterValidatorsFromAssemblyContaining<AddCartValidator>();
+        //    });
+
+        //    return services;
+        //}
+        #endregion
+        public static IServiceCollection AddFluentValidation(this IServiceCollection services) =>
+            services.AddFluentValidationAutoValidation()
+            .AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
         public static IServiceCollection AddResendOtpRateLimiter(this IServiceCollection services)
         {
             services.AddRateLimiter(options =>

@@ -105,6 +105,11 @@ public class ProductService(AuthContext context ,
     
     public async Task<Response<PaginatedList<GetProductResponse>>> GetProductsAsync( Expression<Func<Product, bool>> predicate , ProductFilters<ProductSorting> filters,CancellationToken cancellationToken)
     {
+        if (filters?.CategoryId.HasValue == true)
+        {
+            predicate = p => !p.IsDeleted && p.CategoryId == filters.CategoryId;
+        }
+
         var source =  _context.Products
             .Where(predicate)
             .Include(p => p.Images)
@@ -307,7 +312,14 @@ public class ProductService(AuthContext context ,
         where TSorting : struct, Enum
     {
         
-        query = query.Where(p => p.IsActive == filters.Status);
+        
+        if(filters.PriceStart.HasValue)
+            query = query.Where(p => p.Price >= filters.PriceStart.Value);
+        
+        if(filters.PriceEnd.HasValue)
+            query = query.Where(p => p.Price <= filters.PriceEnd.Value);
+        
+
         
         if (!string.IsNullOrWhiteSpace(filters.SearchValue))
         {

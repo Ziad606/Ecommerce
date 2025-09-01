@@ -27,7 +27,7 @@ public class ProductController(IProductService productService, ResponseHandler r
    }
    
    [HttpGet("")]
-   [Authorize(Roles = "Admin")]
+   [Authorize(Roles = "Admin,User")]
    public async Task<IActionResult> GetProducts([FromQuery] ProductFilters<ProductSorting> filters,CancellationToken cancellationToken)
    {
       if (!ModelState.IsValid)

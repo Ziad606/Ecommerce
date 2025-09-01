@@ -16,6 +16,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 using Serilog;
+using Ecommerce.API.Validators.Order;
 
 namespace Ecommerce.API.Extensions
 {
@@ -123,6 +124,8 @@ namespace Ecommerce.API.Extensions
                 fv.RegisterValidatorsFromAssemblyContaining<CreateProductRequestValidator>();
                 fv.RegisterValidatorsFromAssemblyContaining<ProductImageFileValidator>();
               fv.RegisterValidatorsFromAssemblyContaining<AddCartValidator>();
+                fv.RegisterValidatorsFromAssemblyContaining<GetOrdersValidator>();
+                fv.RegisterValidatorsFromAssemblyContaining<CreateOrderRequestValidator>();
             });
                 
             return services;

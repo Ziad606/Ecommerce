@@ -1,6 +1,8 @@
 ﻿namespace Ecommerce.Entities.DTO.Orders
 {
-    internal class OrderItemRequest
+    public class OrderItemRequest
     {
+        public int ProductId { get; set; }
+        public int Quantity { get; set; }
     }
 }

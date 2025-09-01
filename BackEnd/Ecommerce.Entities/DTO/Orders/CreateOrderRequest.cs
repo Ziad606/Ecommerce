@@ -8,8 +8,11 @@ namespace Ecommerce.Entities.DTO.Orders
 {
     public class CreateOrderRequest
     {
-
-        public string shippingAddress { get; set; }
-        List<Guid> ProductIds { get; set; } = new List<Guid>();
+        public int BuyerId { get; set; }
+        public List<OrderItemRequest> OrderItems { get; set; } 
+        public string ShippingCity { get; set; }
+        public string ShippingState { get; set; }
+        public string ShippingCountry { get; set; }
+        public int ShippingZipCode { get; set; }
     }
 }

@@ -18,7 +18,8 @@ namespace Ecommerce.DataAccess.Seeder
                     UserName = "admin",
                     Email = "zezomohammed390@gmail.com",
                     PhoneNumber = "01224309198",
-                    EmailConfirmed = true,FirstName = "John",
+                    EmailConfirmed = true,
+                    FirstName = "John",
                     LastName = "Administrator",
                     DateOfBirth = new DateTime(1985, 5, 15),
                     Gender = "Male",
@@ -34,8 +35,8 @@ namespace Ecommerce.DataAccess.Seeder
                 };
                 await _userManager.CreateAsync(adminUser, "P@ssw0rd123Pass");
                 await _userManager.AddToRoleAsync(adminUser, "Admin");
-                
-                
+
+
                 var normalUser = new User
                 {
                     UserName = "Ziad",
@@ -56,7 +57,7 @@ namespace Ecommerce.DataAccess.Seeder
                     PhoneNumber = "+201234567891",
                     PhoneNumberConfirmed = true
                 };
-                
+
                 await _userManager.CreateAsync(normalUser, "P@ssw0rd123Pass");
                 await _userManager.AddToRoleAsync(normalUser, "User");
             }

@@ -128,15 +128,15 @@ namespace Ecommerce.DataAccess.Services.Auth
 
                 var tokens = await _tokenStoreService.GenerateAndStoreTokensAsync(user.Id, user);
 
-                // var otp = await _otpService.GenerateAndStoreOtpAsync(user.Id);
-                //
-                // // Send OTP via Email
-                // await _emailService.SendOtpEmailAsync(user, otp);
-                //
-                // await _context.SaveChangesAsync();
-                // await transaction.CommitAsync();
-                //
-                // _logger.LogInformation("User registration completed successfully. Email sent to {Email}", registerRequest.Email);
+                var otp = await _otpService.GenerateAndStoreOtpAsync(user.Id);
+
+                // Send OTP via Email
+                await _emailService.SendOtpEmailAsync(user, otp);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("User registration completed successfully. Email sent to {Email}", registerRequest.Email);
 
 
                 var response = new RegisterResponse
@@ -185,7 +185,7 @@ namespace Ecommerce.DataAccess.Services.Auth
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to send OTP email to user ID: {UserId}", user.Id);
-                //return _responseHandler.InternalServerError<ForgetPasswordResponse>("Failed to send OTP.");
+                return _responseHandler.InternalServerError<ForgetPasswordResponse>("Failed to send OTP.");
             }
             var response = new ForgetPasswordResponse
             {

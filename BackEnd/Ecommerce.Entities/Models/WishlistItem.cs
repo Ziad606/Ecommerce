@@ -6,7 +6,7 @@ namespace Ecommerce.Entities.Models
     public class WishlistItem
     {
         [Key]
-        public Guid Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid(); // عشان اول اما اعمل منه instance يعملو by default
 
         [Required]
         public Guid WishlistId { get; set; }

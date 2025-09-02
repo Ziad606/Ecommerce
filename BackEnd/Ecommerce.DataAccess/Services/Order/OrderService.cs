@@ -132,6 +132,117 @@ namespace Ecommerce.DataAccess.Services.Order
                 return _responseHandler.InternalServerError<GetOrdersResponse>("Failed to retrieve orders: " + ex.Message);
             }
         }
+        ///////
+        public async Task<Response<OrderDetailsResponse>> UpdateOrderAsync(Guid id, UpdateOrderRequest dto)
+        {
+            try
+            {
+                var order = await _context.Orders
+                    .Include(o => o.Buyer)
+                    .FirstOrDefaultAsync(o => o.Id == id);
 
+                if (order == null)
+                {
+                    _logger.LogWarning("Order with ID {OrderId} not found.", id);
+                    return _responseHandler.NotFound<OrderDetailsResponse>("Order not found.");
+                }
+
+                // Validate status transition
+                if (!IsValidStatusTransition(order.Status, dto.Status))
+                {
+                    _logger.LogWarning("Invalid status transition from {CurrentStatus} to {NewStatus}.", order.Status, dto.Status);
+                    return _responseHandler.BadRequest<OrderDetailsResponse>("Invalid status transition.");
+                }
+
+                order.Status = dto.Status;
+                if (dto.Status == OrderStatus.Delivered)
+                    order.DeliveredDate = DateTime.UtcNow;
+                else if (dto.Status == OrderStatus.Cancelled)
+                    order.CancelledDate = DateTime.UtcNow;
+
+                // Mock notification (e.g., log to console; replace with email service later)
+                Console.WriteLine($"Notification: Order {id} status updated to {dto.Status} for buyer {order.Buyer.FirstName} {order.Buyer.LastName}");
+
+                await _context.SaveChangesAsync();
+
+                var OrderDetailsResponse = new OrderDetailsResponse
+                {
+                    OrderId = order.Id.ToString(),
+                    Status = order.Status,
+                    TotalPrice = order.TotalPrice,
+                    //ShippingPrice = order.ShippingPrice,
+                    ShippingAddress = order.ShippingAddress,
+                    CourierService = order.CourierService,
+                    OrderDate = order.OrderDate
+                };
+
+                _logger.LogInformation("Order {OrderId} status updated to {Status} successfully.", id, dto.Status);
+                return _responseHandler.Success(OrderDetailsResponse, "Order status updated successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating order {OrderId}.", id);
+                return _responseHandler.InternalServerError<OrderDetailsResponse>("Failed to update order: " + ex.Message);
+            }
+        }
+
+        public async Task<Response<string>> DeleteOrderAsync(Guid id, DeleteOrderRequest dto)
+        {
+            try
+            {
+                if (!dto.Confirm)
+                {
+                    _logger.LogWarning("Deletion not confirmed.");
+                    return _responseHandler.BadRequest<string>("Deletion not confirmed.");
+                }
+
+                var order = await _context.Orders
+                    .Include(o => o.OrderItems)
+                    .FirstOrDefaultAsync(o => o.Id == id);
+
+                if (order == null)
+                {
+                    _logger.LogWarning("Order with ID {OrderId} not found.", id);
+                    return _responseHandler.NotFound<string>("Order not found.");
+                }
+
+                using var transaction = await _context.Database.BeginTransactionAsync(); // Begin Transaction
+
+                foreach (var orderItem in order.OrderItems)
+                {
+                    var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == orderItem.ProductId);
+                    if (product != null)
+                    {
+                        product.StockQuantity += orderItem.Quantity;
+                    }
+                }
+                _context.Orders.Remove(order);  // Cascade delete removes OrderItems
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return _responseHandler.Deleted<string>("Order deleted successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting order {OrderId}.", id);
+                return _responseHandler.InternalServerError<string>("Failed to delete order: " + ex.Message);
+            }
+        }
+
+
+
+
+        private bool IsValidStatusTransition(OrderStatus currentStatus, OrderStatus newStatus)
+        {
+            var validTransitions = new Dictionary<OrderStatus, OrderStatus[]>
+             {
+        { OrderStatus.Pending, new[] { OrderStatus.Shipped, OrderStatus.Cancelled } },
+        { OrderStatus.Shipped, new[] { OrderStatus.Delivered, OrderStatus.Cancelled } },
+        { OrderStatus.Delivered, new OrderStatus[] { } },
+        { OrderStatus.Cancelled, new OrderStatus[] { } }
+             };
+
+            return validTransitions.TryGetValue(currentStatus, out var allowed) && allowed.Contains(newStatus);
+        }
     }
 }

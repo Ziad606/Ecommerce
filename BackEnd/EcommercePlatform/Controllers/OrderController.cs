@@ -35,5 +35,27 @@ namespace Ecommerce.API.Controllers
             var result = await _orderService.GetOrdersAsync(dto);
             return StatusCode((int)result.StatusCode, result);
         }
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateOrder(Guid id, [FromBody] UpdateOrderRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
+
+            var result = await _orderService.UpdateOrderAsync(id, request);
+            return StatusCode((int)result.StatusCode, result);
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteOrder(Guid id, [FromBody] DeleteOrderRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
+
+            var result = await _orderService.DeleteOrderAsync(id, request);
+            return StatusCode((int)result.StatusCode, result);
+        }
+
     }
 }

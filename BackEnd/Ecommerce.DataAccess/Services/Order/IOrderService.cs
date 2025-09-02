@@ -12,6 +12,9 @@ namespace Ecommerce.DataAccess.Services.Order
     {
         Task<Response<Guid>> CreateOrderAsync(CreateOrderRequest dto);
         Task<Response<GetOrdersResponse>> GetOrdersAsync(GetOrdersRequest dto);
-
+        Task<Response<OrderDetailsResponse>> UpdateOrderAsync(Guid id, UpdateOrderRequest dto);
+        Task<Response<string>> DeleteOrderAsync(Guid id, DeleteOrderRequest dto);
     }
+
 }
+

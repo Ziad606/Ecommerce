@@ -7,7 +7,7 @@ namespace Ecommerce.Entities.Models
     public class Cart
     {
         [Key]
-        public Guid Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required]
         public string BuyerId { get; set; }

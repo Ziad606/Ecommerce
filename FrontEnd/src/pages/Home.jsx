@@ -2,6 +2,7 @@
 import  Hero   from '../componants/hero';
 import SalesSection from '../componants/SalesSection';   
 import CategorySection from '../componants/CategorySection';
+<<<<<<< HEAD
 import ThisMonth from "../homecomponants/thismonth"
 import Black from "../homecomponants/black"
 import PRoductsSection from "../homecomponants/OurProducts"
@@ -31,6 +32,8 @@ export function SliderButtons({ sliderRef }) {
     </div>
   );
 }
+=======
+>>>>>>> origin/dev
 
 const Home = () => {
   return<>
@@ -41,12 +44,17 @@ const Home = () => {
        <hr />
        {/* category  */}
        <CategorySection/>
+<<<<<<< HEAD
        <hr />
        <ThisMonth/>
        </div>
        <Black/>
       <PRoductsSection/>
       <Features/>
+=======
+       </div>
+      
+>>>>>>> origin/dev
     </>
 };
 export default Home;

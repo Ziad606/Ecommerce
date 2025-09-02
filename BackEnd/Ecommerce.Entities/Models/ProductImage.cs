@@ -6,7 +6,7 @@ namespace Ecommerce.Entities.Models
     public class ProductImage
     {
         [Key]
-        public Guid Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required]
         public string ImageUrl { get; set; }

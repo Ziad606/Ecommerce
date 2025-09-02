@@ -82,9 +82,9 @@ namespace Ecommerce.DataAccess.Services.Auth
             var response = new LoginResponse
             {
                 Id = user.Id,
-                Email = user.Email,
-                PhoneNumber = user.PhoneNumber,
-                Role = roles.FirstOrDefault(),
+                Email = user.Email!,
+                PhoneNumber = user.PhoneNumber!,
+                Role = roles.FirstOrDefault()!,
                 IsEmailConfirmed = user.EmailConfirmed,
                 AccessToken = tokens.AccessToken,
                 RefreshToken = tokens.RefreshToken,

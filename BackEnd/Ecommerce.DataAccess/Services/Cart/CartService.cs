@@ -1,4 +1,5 @@
 ﻿using Ecommerce.DataAccess.ApplicationContext;
+using Ecommerce.Entities.DTO.Cart;
 using Ecommerce.Entities.DTO.CartDTOs;
 using Ecommerce.Entities.Models;
 using Ecommerce.Services.Interfaces;
@@ -31,8 +32,6 @@ namespace Ecommerce.Services.Implementations
 			// دور على الكارت بتاع الـ Buyer
 			var cart = await _context.Carts
 				.Include(c => c.CartItems)
-				.ThenInclude(ci => ci.Product)
-				.ThenInclude(p => p.Images)
 				.FirstOrDefaultAsync(c => c.BuyerId == buyerId);
 
 			if (cart == null)
@@ -71,8 +70,7 @@ namespace Ecommerce.Services.Implementations
 					CartId = cart.Id,
 					ProductId = dto.ProductId,
 					Quantity = dto.Quantity,
-					CreatedAt = DateTime.UtcNow,
-					Product = product // ربط المنتج للحصول على البيانات
+					CreatedAt = DateTime.UtcNow
 				};
 				cart.CartItems.Add(newCartItem);
 				targetCartItem = newCartItem;
@@ -91,6 +89,81 @@ namespace Ecommerce.Services.Implementations
 				ProductName = product.Name,
 				ProductPrice = product.Price,
 				Quantity = targetCartItem.Quantity
+			};
+		}
+
+		public async Task<GetCartResponse?> GetCartAsync(string buyerId)
+		{
+			// جلب الكارت مع كل البيانات المطلوبة
+			var cart = await _context.Carts
+				.Include(c => c.CartItems)
+				.ThenInclude(ci => ci.Product)
+				.ThenInclude(p => p.Images)
+				.FirstOrDefaultAsync(c => c.BuyerId == buyerId);
+
+			if (cart == null)
+				return null; // مافيش كارت للـ user ده
+
+			// تحويل CartItems إلى CartItemDetailsDto
+			var cartItemsDto = cart.CartItems.Select(ci => new CartItemDetailsDto
+			{
+				Id = ci.Id,
+				ProductId = ci.ProductId,
+				ProductName = ci.Product.Name,
+				ProductPrice = ci.Product.Price,
+				ProductImage = ci.Product.Images?.FirstOrDefault()?.ImageUrl,
+				Quantity = ci.Quantity,
+				StockStatus = ci.Product.StockStatus.ToString(), // دلوقتي هيشتغل عادي
+				StockQuantity = ci.Product.StockQuantity
+			}).ToList();
+
+			// حساب المجاميع
+			var totalItems = cartItemsDto.Sum(item => item.Quantity);
+			var totalPrice = cartItemsDto.Sum(item => item.Subtotal);
+
+			return new GetCartResponse
+			{
+				Id = cart.Id,
+				Items = cartItemsDto,
+				TotalItems = totalItems,
+				TotalPrice = totalPrice,
+				CreatedAt = cart.CreatedAt,
+				UpdatedAt = cart.UpdatedAt
+			};
+		}
+
+		public async Task<UpdateCartResponse> UpdateCartItemQuantityAsync(
+			string buyerId, Guid cartItemId, int quantity, CancellationToken ct = default)
+		{
+			var cartItem = await _context.Set<CartItem>()
+				.Include(ci => ci.Cart)
+				.Include(ci => ci.Product)
+				.FirstOrDefaultAsync(ci => ci.Id == cartItemId && ci.Cart.BuyerId == buyerId, ct);
+
+			if (cartItem is null || cartItem.Product is null)
+				return null;
+
+			// تحقق من المخزون
+			if (cartItem.Product.StockQuantity < quantity)
+				return new UpdateCartResponse
+				{
+					Id = cartItem.Id,
+					Quantity = -1, // إشارة لفشل المخزون
+					Subtotal = 0
+				};
+
+			cartItem.Quantity = quantity;
+			cartItem.UpdatedAt = DateTime.UtcNow;
+			cartItem.Cart.UpdatedAt = DateTime.UtcNow;
+
+			var subtotal = cartItem.Product.Price * cartItem.Quantity;
+			await _context.SaveChangesAsync(ct);
+
+			return new UpdateCartResponse
+			{
+				Id = cartItem.Id,
+				Quantity = cartItem.Quantity,
+				Subtotal = subtotal
 			};
 		}
 	}

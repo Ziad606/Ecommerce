@@ -1,26 +1,36 @@
-﻿using System.Text;
-using System.Threading.RateLimiting;
-using Ecommerce.API.Validators;
-using Ecommerce.API.Validators.Products;
-using Ecommerce.API.Validators.CartValidators;
 using Ecommerce.DataAccess.ApplicationContext;
-using Ecommerce.Entities.DTO.Products;
+using Ecommerce.DataAccess.Services.Payments;
 using Ecommerce.Entities.Models.Auth.Identity;
 using Ecommerce.Utilities.Configurations;
-
+using FluentValidation;
 using FluentValidation.AspNetCore;
-
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-
 using Serilog;
+using Stripe;
+using System.Reflection;
+using System.Text;
+using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 
 namespace Ecommerce.API.Extensions
 {
     public static class APIServiceCollectionExtensions
     {
+        public static IServiceCollection AddServicesConfigurations(this IServiceCollection services,IConfiguration configuration)
+        {
+            services.AddAuthenticationAndAuthorization(configuration)
+                .AddSwagger()
+                .AddFluentValidation()
+                .AddCORSConfig(configuration)
+                .AddResendOtpRateLimiter()
+                .AddStripeConfig(configuration);
+            return services;
+        }
+
         public static IHostBuilder UseSerilogLogging(this IHostBuilder hostBuilder)
         {
             return hostBuilder.UseSerilog((context, configuration) =>
@@ -31,7 +41,7 @@ namespace Ecommerce.API.Extensions
                     .Enrich.WithMachineName();
             });
         }
-        public static IServiceCollection AddAuthenticationAndAuthorization(this IServiceCollection services, IConfiguration configuration)
+        private static IServiceCollection AddAuthenticationAndAuthorization(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddIdentity<User, Role>(opt =>
             {
@@ -61,7 +71,7 @@ namespace Ecommerce.API.Extensions
                 var jwtSettings = configuration.GetSection("JWT").Get<JwtSettings>();
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    ValidateIssuer = !string.IsNullOrEmpty(jwtSettings.Issuer),
+                    ValidateIssuer = !string.IsNullOrEmpty(jwtSettings!.Issuer),
                     ValidIssuer = jwtSettings.Issuer,
                     ValidateAudience = !string.IsNullOrEmpty(jwtSettings.Audience),
                     ValidAudience = jwtSettings.Audience,
@@ -72,7 +82,7 @@ namespace Ecommerce.API.Extensions
 
             return services;
         }
-        public static IServiceCollection AddSwagger(this IServiceCollection services)
+        private static IServiceCollection AddSwagger(this IServiceCollection services)
         {
             services.AddSwaggerGen(option =>
             {
@@ -108,27 +118,32 @@ namespace Ecommerce.API.Extensions
                     }
                 });
             });
+            services
+                .AddControllers() 
+                .AddJsonOptions(options => 
+                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
             return services;
         }
-        public static IServiceCollection AddFluentValidation(this IServiceCollection services)
-        {
-            services.AddControllers().AddFluentValidation(fv =>
-            {
-                fv.RegisterValidatorsFromAssemblyContaining<RegisterRequestValidator>();
-                fv.RegisterValidatorsFromAssemblyContaining<LoginRequestValidator>();
-                fv.RegisterValidatorsFromAssemblyContaining<ForgetPasswordRequestValidator>();
-                fv.RegisterValidatorsFromAssemblyContaining<ResetPasswordRequestValidator>();
-                fv.RegisterValidatorsFromAssemblyContaining<ChangePasswordRequestValidator>();
-                fv.RegisterValidatorsFromAssemblyContaining<CreateProductRequestValidator>();
-                fv.RegisterValidatorsFromAssemblyContaining<ProductImageFileValidator>();
-              fv.RegisterValidatorsFromAssemblyContaining<AddCartValidator>();
-            });
-                
-			});
-            return services;
-        }
-        public static IServiceCollection AddResendOtpRateLimiter(this IServiceCollection services)
+
+        private static IServiceCollection AddFluentValidation(this IServiceCollection services) =>
+            services.AddFluentValidationAutoValidation()
+            .AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+      
+        private static IServiceCollection AddCORSConfig(this IServiceCollection services,IConfiguration configuration)
+      {
+          services.AddCors(options =>
+          {
+              options.AddDefaultPolicy(builder =>
+                  builder.WithOrigins(configuration.GetSection("AllowedOrigins").Get<string[]>()!)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod() // choose the origin at client at the appsettings.json
+              );
+          });
+          return services;
+      }
+        
+        private static IServiceCollection AddResendOtpRateLimiter(this IServiceCollection services)
         {
             services.AddRateLimiter(options =>
             {
@@ -145,6 +160,17 @@ namespace Ecommerce.API.Extensions
 
             });
             return services;
+        }
+
+        private static IServiceCollection AddStripeConfig( this IServiceCollection services,IConfiguration configuration)
+        {
+            services.AddScoped<PaymentIntentService>();
+            services.AddScoped<IPaymentService, PaymentService>();
+            var secretKey = configuration["Stripe:SecretKey"] ??
+                    throw new InvalidOperationException("Stripe Secret Key is not configured");
+            StripeConfiguration.ApiKey = secretKey;
+            return services;
+
         }
 
         private static string GetClientIp(HttpContext context)

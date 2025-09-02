@@ -10,7 +10,7 @@ namespace Ecommerce.Entities.DTO.Orders
 {
     public class OrderDetailsResponse
     {
-        public string OrderId { get; set; }
+        public Guid OrderId { get; set; }
         public string BuyerName { get; set; }
         public OrderStatus Status { get; set; }
         public decimal TotalPrice { get; set; }

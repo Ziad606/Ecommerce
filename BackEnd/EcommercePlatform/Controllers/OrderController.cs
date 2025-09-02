@@ -4,6 +4,7 @@ using Ecommerce.Entities.Shared.Bases;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Ecommerce.API.Controllers
 {
@@ -57,5 +58,57 @@ namespace Ecommerce.API.Controllers
             return StatusCode((int)result.StatusCode, result);
         }
 
+        [HttpPost("my")]
+        [Authorize(Roles = "User")]
+        public async Task<IActionResult> CreateMyOrder([FromBody] BuyerCreateOrderRequest request)
+        {
+            if (!ModelState.IsValid) return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
+
+            var buyerId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "");
+            var result = await _orderService.CreateOrderFromCartAsync(request, buyerId);
+            return StatusCode((int)result.StatusCode, result);
+        }
+
+        [HttpGet("my")]
+        [Authorize(Roles = "User")]
+        public async Task<IActionResult> GetMyOrders([FromQuery] GetOrdersRequest dto)
+        {
+            if (!ModelState.IsValid) return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
+
+            var buyerId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "");
+            var result = await _orderService.GetOrdersAsync(dto, buyerId);
+            return StatusCode((int)result.StatusCode, result);
+        }
+
+        [HttpPost("cance/{id}")]
+        [Authorize(Roles = "User")]
+        public async Task<IActionResult> CancelOrder(Guid id, [FromBody] DeleteOrderRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
+
+            var buyerId = HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(buyerId))
+                return Unauthorized();
+
+            var result = await _orderService.CancelOrderAsBuyerAsync(id, request, buyerId);
+            return StatusCode((int)result.StatusCode, result);
+        }
+
+        [Route("delete/{id}")]
+        [HttpDelete]
+        [Authorize(Roles = "User")]
+        public async Task<IActionResult> DeleteOrderAsBuyer(Guid id, [FromBody] DeleteOrderRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
+
+            var buyerId = HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(buyerId))
+                return Unauthorized();
+
+            var result = await _orderService.DeleteOrderAsBuyerAsync(id, request, buyerId);
+            return StatusCode((int)result.StatusCode, result);
+        }
     }
 }

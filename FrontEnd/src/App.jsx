@@ -5,12 +5,14 @@ import Home from "./pages/Home";
 import Login from "./pages/login";
 import Footer from "./componants/Footer";
 import Contact from "./pages/Contact";
-import Header from "./componants/Header";
+
+// import Header from "./componants/Header";
 
 function App() {
   return (
     <>
- <Header />
+      {/* <Header /> */}
+
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />

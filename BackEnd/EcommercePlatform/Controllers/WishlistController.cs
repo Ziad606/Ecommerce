@@ -32,7 +32,6 @@ namespace Ecommerce.API.Controllers
 		}
 
 
-
 		
 		[HttpGet("")]
 		public async Task<IActionResult> GetWishlist(CancellationToken cancellationToken)
@@ -55,6 +54,24 @@ namespace Ecommerce.API.Controllers
 				return Unauthorized(_responseHandler.Unauthorized<object>("User not authenticated."));
 
 			var result = await _wishlistService.RemoveItemFromWishlistAsync(buyerId, itemId, cancellationToken);
+			return StatusCode((int)result.StatusCode, result);
+		}
+
+
+		[HttpPost("items/{itemId:guid}/move-to-cart")]
+		public async Task<IActionResult> MoveItemToCart(
+			[FromRoute] Guid itemId,
+			[FromBody] MoveToCartRequest request,
+			CancellationToken cancellationToken)
+		{
+			if (!ModelState.IsValid)
+				return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
+
+			var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+			if (string.IsNullOrWhiteSpace(buyerId))
+				return Unauthorized(_responseHandler.Unauthorized<object>("User not authenticated."));
+
+			var result = await _wishlistService.MoveItemToCartAsync(buyerId, itemId, request.Quantity, cancellationToken);
 			return StatusCode((int)result.StatusCode, result);
 		}
 

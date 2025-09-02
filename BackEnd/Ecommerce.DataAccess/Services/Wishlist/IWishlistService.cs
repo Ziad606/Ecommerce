@@ -14,9 +14,17 @@ namespace Ecommerce.Services.Interfaces
 		Task<Response<GetWishlistResponse>> GetWishlistAsync(
 		 string buyerId,
 		 CancellationToken cancellationToken = default);
+
+
 		Task<Response<bool>> RemoveItemFromWishlistAsync(
 	  string buyerId,
 	  Guid wishlistItemId,
 	  CancellationToken cancellationToken = default);
+
+		Task<Response<MoveToCartResponse>> MoveItemToCartAsync(
+		   string buyerId,
+		   Guid wishlistItemId,
+		   int quantity,
+		   CancellationToken cancellationToken = default);
 	}
 }

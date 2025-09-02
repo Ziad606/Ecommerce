@@ -221,5 +221,121 @@ namespace Ecommerce.DataAccess.Services.Wishlist
 			}
 		}
 
+		public async Task<Response<MoveToCartResponse>> MoveItemToCartAsync(
+		   string buyerId, Guid wishlistItemId, int quantity, CancellationToken cancellationToken = default)
+		{
+			_logger.LogInformation("Moving item from wishlist to cart for BuyerId={BuyerId}, WishlistItemId={WishlistItemId}, Quantity={Quantity}",
+				buyerId, wishlistItemId, quantity);
+
+			try
+			{
+				var wishlistItem = await _context.WishlistItems
+					.Include(wi => wi.Wishlist)
+					.Include(wi => wi.Product)
+					.FirstOrDefaultAsync(wi => wi.Id == wishlistItemId &&
+											 wi.Wishlist.BuyerId == buyerId, cancellationToken);
+
+				if (wishlistItem == null)
+				{
+					_logger.LogWarning("Wishlist item {WishlistItemId} not found for BuyerId={BuyerId}",
+						wishlistItemId, buyerId);
+					return _responseHandler.NotFound<MoveToCartResponse>("Wishlist item not found.");
+				}
+
+				if (wishlistItem.Product == null || wishlistItem.Product.IsDeleted || !wishlistItem.Product.IsActive)
+				{
+					_logger.LogWarning("Product {ProductId} is not available for wishlist item {WishlistItemId}",
+						wishlistItem.ProductId, wishlistItemId);
+					return _responseHandler.BadRequest<MoveToCartResponse>("Product is no longer available.");
+				}
+
+				if (wishlistItem.Product.StockQuantity < quantity)
+				{
+					_logger.LogWarning("Insufficient stock for ProductId={ProductId}. Available: {Available}, Requested: {Requested}",
+						wishlistItem.ProductId, wishlistItem.Product.StockQuantity, quantity);
+					return _responseHandler.BadRequest<MoveToCartResponse>(
+						$"Insufficient stock. Only {wishlistItem.Product.StockQuantity} items available.");
+				}
+
+				// Get or create cart
+				var cart = await _context.Carts
+					.Include(c => c.CartItems)
+					.FirstOrDefaultAsync(c => c.BuyerId == buyerId, cancellationToken);
+
+				if (cart == null)
+				{
+					cart = new Cart
+					{
+						Id = Guid.NewGuid(),
+						BuyerId = buyerId,
+						CreatedAt = DateTime.UtcNow,
+						CartItems = new List<CartItem>()
+					};
+					await _context.Carts.AddAsync(cart, cancellationToken);
+					_logger.LogInformation("New cart created for BuyerId={BuyerId} during wishlist move", buyerId);
+				}
+
+				// Check if product already exists in cart
+				var existingCartItem = cart.CartItems
+					.FirstOrDefault(ci => ci.ProductId == wishlistItem.ProductId);
+
+				if (existingCartItem != null)
+				{
+					var newTotalQuantity = existingCartItem.Quantity + quantity;
+					if (newTotalQuantity > wishlistItem.Product.StockQuantity)
+					{
+						_logger.LogWarning("Total quantity {TotalQuantity} exceeds stock {Stock} for ProductId={ProductId}",
+							newTotalQuantity, wishlistItem.Product.StockQuantity, wishlistItem.ProductId);
+						return _responseHandler.BadRequest<MoveToCartResponse>(
+							$"Cannot add {quantity} items. Maximum available considering cart: {wishlistItem.Product.StockQuantity - existingCartItem.Quantity}");
+					}
+
+					existingCartItem.Quantity = newTotalQuantity;
+					existingCartItem.UpdatedAt = DateTime.UtcNow;
+				}
+				else
+				{
+					var newCartItem = new CartItem
+					{
+						Id = Guid.NewGuid(),
+						CartId = cart.Id,
+						ProductId = wishlistItem.ProductId,
+						Quantity = quantity,
+						CreatedAt = DateTime.UtcNow
+					};
+					cart.CartItems.Add(newCartItem);
+				}
+
+				cart.UpdatedAt = DateTime.UtcNow;
+
+				// Remove item from wishlist
+				_context.WishlistItems.Remove(wishlistItem);
+				wishlistItem.Wishlist.UpdatedAt = DateTime.UtcNow;
+
+				await _context.SaveChangesAsync(cancellationToken);
+
+				var response = new MoveToCartResponse
+				{
+					Success = true,
+					Message = "Item moved to cart successfully"
+				};
+
+				_logger.LogInformation("Item successfully moved from wishlist to cart for BuyerId={BuyerId}", buyerId);
+				return _responseHandler.Success(response, "Item moved to cart successfully.");
+			}
+			catch (DbUpdateException ex)
+			{
+				_logger.LogError(ex, "Database error while moving item from wishlist to cart for BuyerId={BuyerId}", buyerId);
+				return _responseHandler.InternalServerError<MoveToCartResponse>(
+					"Database error occurred while moving item to cart.");
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Unexpected error while moving item from wishlist to cart for BuyerId={BuyerId}", buyerId);
+				return _responseHandler.InternalServerError<MoveToCartResponse>(
+					"An unexpected error occurred while moving item to cart.");
+			}
+		}
+
 	}
 }

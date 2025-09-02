@@ -57,8 +57,8 @@ namespace EcommercePlatform
                 configuration.AbortOnConnectFail = false;
                 return ConnectionMultiplexer.Connect(configuration);
             });
-            
-            
+
+
 
             builder.Services.AddSwagger();
             builder.Services.AddEndpointsApiExplorer();
@@ -77,11 +77,11 @@ namespace EcommercePlatform
             }
             #endregion
 
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
+            //if (app.Environment.IsDevelopment())
+            //{
+            app.UseSwagger();
+            app.UseSwaggerUI();
+            //}
 
             app.UseHttpsRedirection();
             app.UseAuthentication();

@@ -33,14 +33,9 @@ public class Program
         builder.Services.AddApplicationServices();
         builder.Services.AddScoped<ResponseHandler>();
         builder.Services.AddDatabase(builder.Configuration);
-        builder.Services.AddAuthenticationAndAuthorization(builder.Configuration);
         builder.Services.AddEmailServices(builder.Configuration);
 
-        builder.Services.AddFluentValidation();
-        builder.Services.AddStripeConfig(builder.Configuration);
-
-        // Rate limiter for otp resend
-        builder.Services.AddResendOtpRateLimiter();
+        builder.Services.AddServicesConfigurations(builder.Configuration);
 
         builder.Services.AddDataProtection()
             .PersistKeysToDbContext<AuthContext>()
@@ -49,14 +44,12 @@ public class Program
         // For redis 
         builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
         {
-            var configuration = ConfigurationOptions.Parse(builder.Configuration.GetConnectionString("Redis"));
+            var configuration = ConfigurationOptions.Parse(builder.Configuration.GetConnectionString("Redis")!) ??
+                throw new InvalidOperationException("this 'Redis' is not valid");
             configuration.AbortOnConnectFail = false;
             return ConnectionMultiplexer.Connect(configuration);
         });
 
-
-
-        builder.Services.AddSwagger();
         builder.Services.AddEndpointsApiExplorer();
 
         var app = builder.Build();
@@ -80,6 +73,7 @@ public class Program
         //}
 
         app.UseHttpsRedirection();
+        app.UseCors();
         app.UseAuthentication();
         app.UseAuthorization();
 

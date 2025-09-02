@@ -135,9 +135,11 @@ namespace Ecommerce.API.Extensions
           services.AddCors(options =>
           {
               options.AddDefaultPolicy(builder =>
-                  builder.WithOrigins(configuration.GetSection("AllowedOrigins").Get<string[]>()!)
-                  .AllowAnyHeader()
-                  .AllowAnyMethod() // choose the origin at client at the appsettings.json
+                  builder
+                    // .WithOrigins(configuration.GetSection("AllowedOrigins").Get<string[]>()!) // production only
+                    .AllowAnyOrigin() // development only
+                    .AllowAnyHeader() 
+                    .AllowAnyMethod() 
               );
           });
           return services;

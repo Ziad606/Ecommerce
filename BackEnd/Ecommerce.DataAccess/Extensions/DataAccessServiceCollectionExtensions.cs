@@ -3,6 +3,7 @@ using System.Net.Mail;
 
 using Ecommerce.DataAccess.ApplicationContext;
 using Ecommerce.DataAccess.Services.Auth;
+using Ecommerce.DataAccess.Services.Category;
 using Ecommerce.DataAccess.Services.Email;
 using Ecommerce.DataAccess.Services.ImageUploading;
 using Ecommerce.DataAccess.Services.OAuth;
@@ -42,6 +43,7 @@ namespace Ecommerce.DataAccess.Extensions
             services.AddScoped<IProductService, ProductService>();
             services.AddScoped<ICartService, CartService>();
             services.AddScoped<IOrderService, OrderService>();
+            services.AddScoped<ICategoryService, CategoryService>();
 
 			return services;
         }

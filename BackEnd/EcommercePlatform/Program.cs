@@ -54,17 +54,17 @@ public class Program
 
         var app = builder.Build();
 
-        #region Seed User,Role Data
-        using (var scope = app.Services.CreateScope())
-        {
-            var services = scope.ServiceProvider;
-            var userManager = services.GetRequiredService<UserManager<User>>();
-            var roleManager = services.GetRequiredService<RoleManager<Entities.Models.Auth.Identity.Role>>();
-
-            await RoleSeeder.SeedAsync(roleManager);
-            await UserSeeder.SeedAsync(userManager);
-        }
-        #endregion
+        // #region Seed User,Role Data
+        // using (var scope = app.Services.CreateScope())
+        // {
+        //     var services = scope.ServiceProvider;
+        //     var userManager = services.GetRequiredService<UserManager<User>>();
+        //     var roleManager = services.GetRequiredService<RoleManager<Entities.Models.Auth.Identity.Role>>();
+        //
+        //     await RoleSeeder.SeedAsync(roleManager);
+        //     await UserSeeder.SeedAsync(userManager);k
+        // }
+        // #endregion
 
         //if (app.Environment.IsDevelopment())
         //{

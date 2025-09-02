@@ -1,31 +1,25 @@
-using System.Reflection;
-using System.Text;
-using System.Text.Json.Serialization;
-using System.Threading.RateLimiting;
-using Ecommerce.API.Validators;
-using Ecommerce.API.Validators.Products;
 using Ecommerce.DataAccess.ApplicationContext;
+using Ecommerce.DataAccess.Services.Payments;
 using Ecommerce.Entities.Models.Auth.Identity;
 using Ecommerce.Utilities.Configurations;
 using FluentValidation;
 using FluentValidation.AspNetCore;
-
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-
 using Serilog;
-using Ecommerce.Business.Validators.Cart;
-using FluentValidation;
+using Stripe;
 using System.Reflection;
+using System.Text;
+using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 
 namespace Ecommerce.API.Extensions
 {
     public static class APIServiceCollectionExtensions
     {
-        private static Assembly Assemply;
-
         public static IHostBuilder UseSerilogLogging(this IHostBuilder hostBuilder)
         {
             return hostBuilder.UseSerilog((context, configuration) =>
@@ -144,6 +138,17 @@ namespace Ecommerce.API.Extensions
 
             });
             return services;
+        }
+
+        public static IServiceCollection AddStripeConfig( this IServiceCollection services,IConfiguration configuration)
+        {
+            services.AddScoped<PaymentIntentService>();
+            services.AddScoped<IPaymentService, PaymentService>();
+            var secretKey = configuration["Stripe:SecretKey"] ??
+                    throw new InvalidOperationException("Stripe Secret Key is not configured");
+            StripeConfiguration.ApiKey = secretKey;
+            return services;
+
         }
 
         private static string GetClientIp(HttpContext context)

@@ -8,7 +8,7 @@ namespace Ecommerce.Entities.Models
     public class Order
     {
         [Key]
-        public Guid Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required]
         public string BuyerId { get; set; } = string.Empty;

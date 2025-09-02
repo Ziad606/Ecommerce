@@ -116,7 +116,7 @@ public class ProductService(AuthContext context ,
             .Include(p => p.Category)
             .AsQueryable();
         
-        var filteredList = FilteredListItems(source, filters)
+        var filteredList = FilteredListItems(source, filters!)
             .Select(p => new GetProductResponse
             {
                 Id = p.Id,
@@ -161,10 +161,10 @@ public class ProductService(AuthContext context ,
             Description = product.Description,
             Price = product.Price,
             CategoryId = product.CategoryId,
-            CategoryName = product.Category?.Name,
-            Dimensions = product.Dimensions,
-            Material = product.Material,
-            SKU = product.SKU,
+            CategoryName = product.Category.Name,
+            Dimensions = product.Dimensions!,
+            Material = product.Material!,
+            SKU = product.SKU!,
             StockQuantity = product.StockQuantity,
             IsActive = product.IsActive,
             CreatedAt = product.CreatedAt,
@@ -325,10 +325,10 @@ public class ProductService(AuthContext context ,
         {
             var searchValue = filters.SearchValue.ToLower().Trim();
             query = query.Where(p => 
-                p.Name.ToLower().Contains(searchValue) ||
-                p.Description.ToLower().Contains(searchValue) ||
-                p.SKU.ToLower().Contains(searchValue) ||
-                p.Category.Name.ToLower().Contains(searchValue));
+                p.Name.Contains(searchValue, StringComparison.CurrentCultureIgnoreCase) ||
+                p.Description.Contains(searchValue, StringComparison.CurrentCultureIgnoreCase) ||
+                p.SKU!.Contains(searchValue, StringComparison.CurrentCultureIgnoreCase) ||
+                p.Category.Name.Contains(searchValue, StringComparison.CurrentCultureIgnoreCase));
             
             _logger.LogInformation("Filtering products by search value: {SearchValue}", filters.SearchValue);
         }

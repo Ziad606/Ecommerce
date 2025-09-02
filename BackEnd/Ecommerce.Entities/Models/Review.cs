@@ -4,7 +4,7 @@ namespace Ecommerce.Entities.Models.Reviews
 {
     public class Review
     {
-        public Guid Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
         public string BuyerId { get; set; }
         public Guid OrderId { get; set; }
         public Guid ProductId { get; set; }

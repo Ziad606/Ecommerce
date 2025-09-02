@@ -1,8 +1,6 @@
 using Ecommerce.API.Extensions;
 using Ecommerce.DataAccess.ApplicationContext;
 using Ecommerce.DataAccess.Extensions;
-using Ecommerce.DataAccess.Seeder;
-using Ecommerce.Entities.Models.Auth.Identity;
 using Ecommerce.Entities.Shared.Bases;
 using Ecommerce.Utilities.Configurations;
 using Microsoft.AspNetCore.DataProtection;

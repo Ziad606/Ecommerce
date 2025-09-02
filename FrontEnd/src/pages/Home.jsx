@@ -1,12 +1,11 @@
+import Hero from "../componants/hero";
+import SalesSection from "../componants/SalesSection";
+import CategorySection from "../componants/CategorySection";
 
-import  Hero   from '../componants/hero';
-import SalesSection from '../componants/SalesSection';   
-import CategorySection from '../componants/CategorySection';
-<<<<<<< HEAD
-import ThisMonth from "../homecomponants/thismonth"
-import Black from "../homecomponants/black"
-import PRoductsSection from "../homecomponants/OurProducts"
-import Features from "../homecomponants/Features" 
+import ThisMonth from "../homecomponants/thismonth";
+import Black from "../homecomponants/black";
+import PRoductsSection from "../homecomponants/OurProducts";
+import Features from "../homecomponants/Features";
 import { RiArrowRightSLine, RiArrowLeftSLine } from "react-icons/ri";
 
 export function SliderButtons({ sliderRef }) {
@@ -32,29 +31,24 @@ export function SliderButtons({ sliderRef }) {
     </div>
   );
 }
-=======
->>>>>>> origin/dev
 
 const Home = () => {
-  return<>
+  return (
+    <>
       <Hero />
-      <div className='mx-auto max-w-7xl'>
+      <div className="mx-auto max-w-7xl">
         {/* sales section  */}
-       <SalesSection/>
-       <hr />
-       {/* category  */}
-       <CategorySection/>
-<<<<<<< HEAD
-       <hr />
-       <ThisMonth/>
-       </div>
-       <Black/>
-      <PRoductsSection/>
-      <Features/>
-=======
-       </div>
-      
->>>>>>> origin/dev
+        <SalesSection />
+        <hr />
+        {/* category  */}
+        <CategorySection />
+        <hr />
+        <ThisMonth />
+      </div>
+      <Black />
+      <PRoductsSection />
+      <Features />
     </>
+  );
 };
 export default Home;

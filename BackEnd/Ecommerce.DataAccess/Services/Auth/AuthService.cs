@@ -1,6 +1,4 @@
-﻿using System.Security.Claims;
-
-using Ecommerce.DataAccess.ApplicationContext;
+﻿using Ecommerce.DataAccess.ApplicationContext;
 using Ecommerce.DataAccess.Services.Email;
 using Ecommerce.DataAccess.Services.OTP;
 using Ecommerce.DataAccess.Services.Token;
@@ -10,12 +8,11 @@ using Ecommerce.Entities.DTO.Account.Auth.Register;
 using Ecommerce.Entities.DTO.Account.Auth.ResetPassword;
 using Ecommerce.Entities.Models.Auth.Identity;
 using Ecommerce.Entities.Shared.Bases;
-
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
-
+using System.Security.Claims;
 using LoginRequest = Ecommerce.Entities.DTO.Account.Auth.Login.LoginRequest;
 using ResetPasswordRequest = Ecommerce.Entities.DTO.Account.Auth.ResetPassword.ResetPasswordRequest;
 
@@ -46,7 +43,7 @@ namespace Ecommerce.DataAccess.Services.Auth
         public async Task<Response<LoginResponse>> LoginAsync(LoginRequest loginRequest)
         {
             // Find user by email or phone number
-            User? user = await FindUserByEmailOrPhoneAsync(loginRequest.Email, loginRequest.PhoneNumber);
+            User? user = await FindUserByEmailOrPhoneAsync(loginRequest.Email); //, loginRequest.PhoneNumber
 
             if (user == null)
                 return _responseHandler.NotFound<LoginResponse>("User not found.");
@@ -168,7 +165,7 @@ namespace Ecommerce.DataAccess.Services.Auth
             _logger.LogInformation("Starting ForgotPasswordAsync for Email: {Email}, Phone: {Phone}", model.Email, model.PhoneNumber);
 
             // Find user by email or phone number
-            User? user = await FindUserByEmailOrPhoneAsync(model.Email, model.PhoneNumber);
+            User? user = await FindUserByEmailOrPhoneAsync(model.Email); //, model.PhoneNumber
 
             if (user == null)
             {
@@ -316,7 +313,7 @@ namespace Ecommerce.DataAccess.Services.Auth
 
                 _logger.LogInformation("Generating new access and refresh tokens for user: {UserId}", user.Id);
                 var userTokens = await _tokenStoreService.GenerateAndStoreTokensAsync(user.Id, user);
-                
+
                 await _tokenStoreService.SaveRefreshTokenAsync(user.Id, userTokens.RefreshToken);
                 _logger.LogInformation("New refresh token saved for user: {UserId}", user.Id);
 
@@ -347,12 +344,12 @@ namespace Ecommerce.DataAccess.Services.Auth
                 return "Phone number is already registered.";
             return null;
         }
-        private async Task<User?> FindUserByEmailOrPhoneAsync(string email, string phone)
+        private async Task<User?> FindUserByEmailOrPhoneAsync(string email) //, string phone
         {
             if (!string.IsNullOrEmpty(email))
                 return await _userManager.FindByEmailAsync(email);
-            if (!string.IsNullOrEmpty(phone))
-                return await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == phone);
+            //if (!string.IsNullOrEmpty(phone))
+            //    return await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == phone);
             return null;
         }
 
@@ -370,7 +367,7 @@ namespace Ecommerce.DataAccess.Services.Auth
                 // Invalidate all refresh tokens for this user
                 await _tokenStoreService.InvalidateOldTokensAsync(userId);
 
-                return _responseHandler.Success<string>(null,"Logged out successfully");
+                return _responseHandler.Success<string>(null, "Logged out successfully");
             }
             catch (Exception ex)
             {
@@ -414,7 +411,7 @@ namespace Ecommerce.DataAccess.Services.Auth
                 // Invalidate all existing refresh tokens for security
                 await _tokenStoreService.InvalidateOldTokensAsync(userId);
 
-                return _responseHandler.Success<string>(null,"Password changed successfully. Please login again.");
+                return _responseHandler.Success<string>(null, "Password changed successfully. Please login again.");
             }
             catch (Exception ex)
             {

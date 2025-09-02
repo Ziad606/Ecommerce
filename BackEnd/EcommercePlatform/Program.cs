@@ -1,12 +1,9 @@
 using Ecommerce.API.Extensions;
 using Ecommerce.DataAccess.ApplicationContext;
 using Ecommerce.DataAccess.Extensions;
-using Ecommerce.DataAccess.Seeder;
-using Ecommerce.Entities.Models.Auth.Identity;
 using Ecommerce.Entities.Shared.Bases;
 using Ecommerce.Utilities.Configurations;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.Identity;
 using StackExchange.Redis;
 namespace Ecommerce.API;
 public class Program
@@ -54,17 +51,17 @@ public class Program
 
         var app = builder.Build();
 
-        // #region Seed User,Role Data
-        // using (var scope = app.Services.CreateScope())
-        // {
-        //     var services = scope.ServiceProvider;
-        //     var userManager = services.GetRequiredService<UserManager<User>>();
-        //     var roleManager = services.GetRequiredService<RoleManager<Entities.Models.Auth.Identity.Role>>();
-        //
-        //     await RoleSeeder.SeedAsync(roleManager);
-        //     await UserSeeder.SeedAsync(userManager);k
-        // }
-        // #endregion
+        //#region Seed User,Role Data
+        //using (var scope = app.Services.CreateScope())
+        //{
+        //    var services = scope.ServiceProvider;
+        //    var userManager = services.GetRequiredService<UserManager<User>>();
+        //    var roleManager = services.GetRequiredService<RoleManager<Entities.Models.Auth.Identity.Role>>();
+
+        //    await RoleSeeder.SeedAsync(roleManager);
+        //    await UserSeeder.SeedAsync(userManager);
+        //}
+        //#endregion
 
         //if (app.Environment.IsDevelopment())
         //{

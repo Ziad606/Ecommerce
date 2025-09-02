@@ -11,6 +11,7 @@ using Ecommerce.DataAccess.Services.OTP;
 
 using Ecommerce.DataAccess.Services.Products;
 using Ecommerce.DataAccess.Services.Token;
+using Ecommerce.DataAccess.Services.Wishlist;
 using Ecommerce.Services.Implementations;
 using Ecommerce.Services.Interfaces;
 using Ecommerce.Utilities.Configurations;
@@ -42,6 +43,7 @@ namespace Ecommerce.DataAccess.Extensions
             services.AddScoped<IProductService, ProductService>();
             services.AddScoped<ICartService, CartService>();
             services.AddScoped<IOrderService, OrderService>();
+            services.AddScoped<IWishlistService,WishlistService>();
 
 			return services;
         }

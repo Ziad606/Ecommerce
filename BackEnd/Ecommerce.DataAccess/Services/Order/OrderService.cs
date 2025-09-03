@@ -72,7 +72,7 @@ namespace Ecommerce.DataAccess.Services.Order
 
                 // Setting Shipping price if total price > 300
                 if(order.TotalPrice > 300) {
-                    order.ShippingPrice = 0;
+                    order.ShippingPrice = 100;
                 } 
                 else {
                     order.ShippingPrice = 0;

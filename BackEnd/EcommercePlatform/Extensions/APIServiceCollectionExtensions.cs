@@ -18,6 +18,13 @@ using System.Threading.RateLimiting;
 
 namespace Ecommerce.API.Extensions
 {
+    /// <summary>
+    /// Handles all payment operations such as buying products, carts, confirming payments, and checking statuses.
+    /// </summary>
+    /// <remarks>
+    /// This controller requires authentication. 
+    /// You can enhance authorization by assigning roles or policies if needed.
+    /// </remarks>
     public static class APIServiceCollectionExtensions
     {
         public static IServiceCollection AddServicesConfigurations(this IServiceCollection services,IConfiguration configuration)
@@ -87,11 +94,6 @@ namespace Ecommerce.API.Extensions
             services.AddSwaggerGen(option =>
             {
                 option.SwaggerDoc("v1", new OpenApiInfo { Title = "MV-Ecommerce", Version = "v1" });
-
-                // For XML Comments we will use it later
-                //var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-                //var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-                //option.IncludeXmlComments(xmlPath);
 
                 option.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {

@@ -23,7 +23,7 @@ namespace Ecommerce.Entities.DTO.Orders
     public class ProductItemDto
     {
         public string ProductName { get; set; }
-        public ProductImage ProdcutImage { get; set; }
+        public ProductImage ProductImage { get; set; }
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; }
     }

@@ -16,7 +16,7 @@ namespace Ecommerce.API.Controllers
         private readonly IOrderService _orderService = orderService;
         private readonly ResponseHandler _responseHandler = responseHandler;
 
-        [HttpPost("")]
+        [HttpPost("admin")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest request)
         {
@@ -26,7 +26,7 @@ namespace Ecommerce.API.Controllers
             return StatusCode((int)result.StatusCode, result);
         }
 
-        [HttpGet("")]
+        [HttpGet("admin")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetOrdersAsync([FromQuery]GetOrdersRequest dto)
         {
@@ -47,7 +47,7 @@ namespace Ecommerce.API.Controllers
             return StatusCode((int)result.StatusCode, result);
         }
 
-        [HttpDelete("{id}")]
+        [HttpDelete("admin/{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteOrder(Guid id, [FromBody] DeleteOrderRequest request)
         {
@@ -80,7 +80,7 @@ namespace Ecommerce.API.Controllers
             return StatusCode((int)result.StatusCode, result);
         }
 
-        [HttpPost("cance/{id}")]
+        [HttpPost("cancel/{id}")]
         [Authorize(Roles = "User")]
         public async Task<IActionResult> CancelOrder(Guid id, [FromBody] DeleteOrderRequest request)
         {
@@ -102,7 +102,7 @@ namespace Ecommerce.API.Controllers
         {
             if (!ModelState.IsValid)
                 return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
-
+            ////
             var buyerId = HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(buyerId))
                 return Unauthorized();

@@ -27,15 +27,15 @@ public class UserEntityConfigurations : IEntityTypeConfiguration<User>
         builder.Property(u => u.DateOfBirth)
             .HasColumnType("date");
 
-        builder.Property(u => u.Gender)
-            .HasMaxLength(20);
+        //builder.Property(u => u.Gender)
+        //    .HasMaxLength(20);
 
-        // Contact & Address
-        builder.Property(u => u.DefaultShippingAddress)
-            .HasMaxLength(500);
+        //// Contact & Address
+        //builder.Property(u => u.DefaultShippingAddress)
+        //    .HasMaxLength(500);
 
-        builder.Property(u => u.DefaultBillingAddress)
-            .HasMaxLength(500);
+        //builder.Property(u => u.DefaultBillingAddress)
+        //    .HasMaxLength(500);
 
         // Account Settings
         builder.Property(u => u.IsActive)
@@ -97,9 +97,9 @@ public class UserEntityConfigurations : IEntityTypeConfiguration<User>
         builder.HasIndex(u => u.CreatedAt)
             .HasDatabaseName("IX_Users_CreatedAt");
 
-       
-        // Additional constraints
-        builder.HasCheckConstraint("CK_Users_DateOfBirth", "[DateOfBirth] <= GETDATE()");
-        builder.HasCheckConstraint("CK_Users_Gender", "[Gender] IN ('Male', 'Female', 'Other', 'PreferNotToSay')");
+
+        //// Additional constraints
+        //builder.HasCheckConstraint("CK_Users_DateOfBirth", "[DateOfBirth] <= GETDATE()");
+        //builder.HasCheckConstraint("CK_Users_Gender", "[Gender] IN ('Male', 'Female', 'Other', 'PreferNotToSay')");
     }
 }

@@ -106,6 +106,9 @@ namespace Ecommerce.DataAccess.Services.Auth
             {
                 var user = new User
                 {
+                    FirstName = registerRequest.FirstName,
+                    LastName = registerRequest.LastName,
+                    DateOfBirth = registerRequest.BirthDate,
                     UserName = registerRequest.Email, // Modify it by what you need
                     Email = registerRequest.Email,
                     PhoneNumber = registerRequest.PhoneNumber,
@@ -121,17 +124,16 @@ namespace Ecommerce.DataAccess.Services.Auth
                 }
 
                 // Assign User role
-                await _userManager.AddToRoleAsync(user, "USER");
+                await _userManager.AddToRoleAsync(user, "User");
                 _logger.LogInformation("User created and role 'User' assigned. ID: {UserId}", user.Id);
 
-                await _userManager.CreateAsync(user);
 
                 var tokens = await _tokenStoreService.GenerateAndStoreTokensAsync(user.Id, user);
 
-                var otp = await _otpService.GenerateAndStoreOtpAsync(user.Id);
+                //var otp = await _otpService.GenerateAndStoreOtpAsync(user.Id);
 
                 // Send OTP via Email
-                await _emailService.SendOtpEmailAsync(user, otp);
+                //await _emailService.SendOtpEmailAsync(user, otp);
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();

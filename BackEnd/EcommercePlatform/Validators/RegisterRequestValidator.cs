@@ -30,7 +30,7 @@ namespace Ecommerce.API.Validators
                 .NotEmpty().WithMessage("Birth date is required.")
                 .LessThanOrEqualTo(DateTime.UtcNow.AddYears(-13)).WithMessage("You must be at least 13 years old.");
 
-            
+
             RuleFor(x => x.Password)
                 .NotEmpty().WithMessage("Password is required.")
                 .MinimumLength(8).WithMessage("Password must be at least 8 characters.")

@@ -95,7 +95,11 @@ namespace Ecommerce.Services.Implementations
 						Quantity = dto.Quantity,
 						CreatedAt = DateTime.UtcNow
 					};
-					cart.CartItems.Add(newCartItem);
+					
+
+					await _context.CartItems.AddAsync(newCartItem, cancellationToken);
+
+
 					targetCartItem = newCartItem;
 
 					_logger.LogInformation("Added new cart item {CartItemId} for ProductId={ProductId}",

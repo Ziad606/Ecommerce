@@ -79,7 +79,9 @@ namespace Ecommerce.DataAccess.Services.Wishlist
 					CreatedAt = DateTime.UtcNow
 				};
 
-				wishlist.WishlistItems.Add(newWishlistItem);
+				
+
+				await _context.WishlistItems.AddAsync(newWishlistItem, cancellationToken);
 				wishlist.UpdatedAt = DateTime.UtcNow;
 
 				await _context.SaveChangesAsync(cancellationToken);

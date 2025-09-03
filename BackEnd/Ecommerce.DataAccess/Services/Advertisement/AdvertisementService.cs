@@ -59,6 +59,7 @@ public class AdvertisementService(
         try
         {
             var advertisements = await _context.Advertisements
+                .Where(a => !a.IsDeleted)
                 .Include(a => a.Product)
                 .OrderByDescending(a => a.Id)
                 .Select(a => new GetAdvertisementsResponse
@@ -90,7 +91,7 @@ public class AdvertisementService(
         {
             var advertisement = await _context.Advertisements
                 .Include(a => a.Product)
-                .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+                .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted, cancellationToken);
 
 
             if (advertisement == null)
@@ -176,15 +177,15 @@ public class AdvertisementService(
 
         try
         {
-            var advertisement = await _context.Advertisements.FirstOrDefaultAsync(a => a.Id == id && a.IsDeleted, cancellationToken);
+            var advertisement = await _context.Advertisements.FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted, cancellationToken);
             if (advertisement == null)
             {
                 _logger.LogWarning("Advertisement with ID {AdvertisementId} not found or already deleted", id);
-                return _responseHandler.NotFound<bool>("Advertisement not found.");
+                return _responseHandler.NotFound<bool>("Advertisement not found or already deleted.");
             }
 
 
-            advertisement.IsDeleted = false;
+            advertisement.IsDeleted = true;
             advertisement.DeletedAt = DateTime.UtcNow;
 
             _context.Advertisements.Update(advertisement);

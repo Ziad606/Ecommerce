@@ -10,5 +10,8 @@ public record PaymentResponse(
      Guid? PaymentId ,
      Guid? OrderId,
      string ClientSecret ,
-     decimal Amount
-);// i using the record cuz is not immutable
+     decimal Amount,
+    decimal? OriginalAmount = null,
+    decimal? DiscountAmount = null,
+    string? PromoCodeUsed = null
+);

@@ -6,7 +6,6 @@ using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
@@ -170,6 +169,7 @@ namespace Ecommerce.API.Extensions
         {
             services.AddScoped<PaymentIntentService>();
             services.AddScoped<IPaymentService, PaymentService>();
+            services.AddScoped<IDiscountService, DataAccess.Services.Payments.DiscountService>();
             var secretKey = configuration["Stripe:SecretKey"] ??
                     throw new InvalidOperationException("Stripe Secret Key is not configured");
             StripeConfiguration.ApiKey = secretKey;

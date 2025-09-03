@@ -13,13 +13,15 @@ namespace Ecommerce.DataAccess.Services.Payments;
 public class PaymentService(PaymentIntentService paymentIntentService,
         AuthContext context,
         ResponseHandler responseHandler,
-        ILogger<PaymentService> logger
+        ILogger<PaymentService> logger,
+        IDiscountService discountService
     ) : IPaymentService
 {
     private readonly PaymentIntentService _paymentIntentService = paymentIntentService;
     private readonly AuthContext _context = context;
     private readonly ResponseHandler _responseHandler = responseHandler;
     private readonly ILogger<PaymentService> _logger = logger;
+    private readonly IDiscountService _discountService = discountService;
 
     public async Task<Response<PaymentResponse>> BuyProductAsync(Guid productId, BuyProductRequest request, CancellationToken cancellationToken = default)
     {
@@ -45,9 +47,27 @@ public class PaymentService(PaymentIntentService paymentIntentService,
                 return _responseHandler.BadRequest<PaymentResponse>("Insufficient stock quantity");
             }
 
-            var amount = product.Price * request.Quantity;
-            var amountInCents = (long)(amount * 100);
+            var originalAmount = product.Price * request.Quantity;
+            var finalAmount = originalAmount;
+            decimal? discountAmount = null;
+            string? promoCodeUsed = null;
+            if (!string.IsNullOrWhiteSpace(request.PromoCode))
+            {
+                var (isValid, discountPercentage, message) = await _discountService.ValidatePromoCodeAsync(request.PromoCode);
 
+                if (!isValid)
+                {
+                    return _responseHandler.BadRequest<PaymentResponse>(message);
+                }
+
+                discountAmount = _discountService.CalculateDiscount(originalAmount, discountPercentage);
+                finalAmount = originalAmount - discountAmount.Value;
+                promoCodeUsed = request.PromoCode.Trim().ToUpper();
+
+                _logger.LogInformation("Discount applied: {DiscountAmount} ({DiscountPercentage}%) for PromoCode={PromoCode}",
+                    discountAmount, discountPercentage, promoCodeUsed);
+            }
+            var amountInCents = (long)(finalAmount * 100);
             var options = new PaymentIntentCreateOptions
             {
                 Amount = amountInCents,
@@ -57,7 +77,11 @@ public class PaymentService(PaymentIntentService paymentIntentService,
                 {
                     ["product_id"] = productId.ToString(),
                     ["quantity"] = request.Quantity.ToString(),
-                    ["customer_email"] = request.CustomerEmail
+                    ["customer_email"] = request.CustomerEmail,
+                    ["original_amount"] = originalAmount.ToString(),
+                    ["final_amount"] = finalAmount.ToString(),
+                    ["promo_code"] = promoCodeUsed ?? "",
+                    ["discount_amount"] = discountAmount?.ToString() ?? "0"
                 }
             };
 
@@ -67,7 +91,7 @@ public class PaymentService(PaymentIntentService paymentIntentService,
             {
                 BuyerId = request.CustomerEmail,
                 Status = OrderStatus.Pending,
-                TotalPrice = amount,
+                TotalPrice = finalAmount,
                 OrderDate = DateTime.UtcNow
             };
 
@@ -84,7 +108,10 @@ public class PaymentService(PaymentIntentService paymentIntentService,
 
             var payment = new Payment
             {
-                Amount = amount,
+                Amount = finalAmount,
+                OriginalAmount = originalAmount,
+                DiscountAmount = discountAmount,
+                PromoCodeUsed = promoCodeUsed,
                 Currency = "USD",
                 Status = Status.Pending,
                 StripePaymentIntentId = paymentIntent.Id,
@@ -105,7 +132,10 @@ public class PaymentService(PaymentIntentService paymentIntentService,
                 payment.Id,
                 order.Id,
                 paymentIntent.ClientSecret,
-                amount
+                amountInCents,
+                originalAmount,
+                discountAmount,
+                promoCodeUsed
             );
 
             return _responseHandler.Success(paymentResponse, "Payment created successfully");
@@ -155,8 +185,28 @@ public class PaymentService(PaymentIntentService paymentIntentService,
                 }
             }
 
-            var totalAmount = cartItems.Sum(item => item.Product.Price * item.Quantity);
-            var amountInCents = (long)(totalAmount * 100);
+            var originalAmount = cartItems.Sum(item => item.Product.Price * item.Quantity);
+            var finalAmount = originalAmount;
+            decimal? discountAmount = null;
+            string? promoCodeUsed = null;
+
+            if (!string.IsNullOrWhiteSpace(request.PromoCode))
+            {
+                var (isValid, discountPercentage, message) = await _discountService.ValidatePromoCodeAsync(request.PromoCode);
+
+                if (!isValid)
+                {
+                    return _responseHandler.BadRequest<PaymentResponse>(message);
+                }
+
+                discountAmount = _discountService.CalculateDiscount(originalAmount, discountPercentage);
+                finalAmount = originalAmount - discountAmount.Value;
+                promoCodeUsed = request.PromoCode.Trim().ToUpper();
+
+                _logger.LogInformation("Cart discount applied: {DiscountAmount} ({DiscountPercentage}%) for PromoCode={PromoCode}",
+                    discountAmount, discountPercentage, promoCodeUsed);
+            }
+            var amountInCents = (long)(finalAmount * 100);
 
             var options = new PaymentIntentCreateOptions
             {
@@ -167,7 +217,11 @@ public class PaymentService(PaymentIntentService paymentIntentService,
                 {
                     ["cart_id"] = cartId.ToString(),
                     ["customer_email"] = request.CustomerEmail,
-                    ["items_count"] = cartItems.Count.ToString()
+                    ["items_count"] = cartItems.Count.ToString(),
+                    ["original_amount"] = originalAmount.ToString(),
+                    ["final_amount"] = finalAmount.ToString(),
+                    ["promo_code"] = promoCodeUsed ?? "",
+                    ["discount_amount"] = discountAmount?.ToString() ?? "0"
                 }
             };
 
@@ -177,7 +231,7 @@ public class PaymentService(PaymentIntentService paymentIntentService,
             {
                 BuyerId = request.CustomerEmail,
                 Status = OrderStatus.Pending,
-                TotalPrice = totalAmount,
+                TotalPrice = finalAmount,
                 OrderDate = DateTime.UtcNow
             };
 
@@ -196,7 +250,10 @@ public class PaymentService(PaymentIntentService paymentIntentService,
 
             var payment = new Payment
             {
-                Amount = totalAmount,
+                Amount = finalAmount,
+                OriginalAmount = originalAmount,
+                DiscountAmount = discountAmount,
+                PromoCodeUsed = promoCodeUsed,
                 Currency = "USD",
                 Status = Status.Pending,
                 StripePaymentIntentId = paymentIntent.Id,
@@ -217,7 +274,10 @@ public class PaymentService(PaymentIntentService paymentIntentService,
                 payment.Id,
                 order.Id,
                 paymentIntent.ClientSecret,
-                totalAmount
+                finalAmount,
+                discountAmount.HasValue ? originalAmount : null,
+                discountAmount,
+                promoCodeUsed
             );
 
             return _responseHandler.Success(paymentResponse, "Cart payment created successfully");
@@ -350,5 +410,24 @@ public class PaymentService(PaymentIntentService paymentIntentService,
             return _responseHandler.InternalServerError<PaymentStatusResponse>("An unexpected error occurred while getting payment status");
         }
     }
+    public async Task<Response<ValidatePromoResponse>> ValidatePromoCodeAsync(ValidatePromoRequest request, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("ValidatePromoCodeAsync called for PromoCode={PromoCode}", request.PromoCode);
 
+            var (isValid, discountPercentage, message) = await _discountService.ValidatePromoCodeAsync(request.PromoCode);
+
+            var response = new ValidatePromoResponse(isValid, discountPercentage, message);
+
+            return isValid
+                ? _responseHandler.Success(response, message)
+                : _responseHandler.BadRequest<ValidatePromoResponse>(message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating promo code {PromoCode}", request.PromoCode);
+            return _responseHandler.InternalServerError<ValidatePromoResponse>("Error validating promo code");
+        }
+    }
 }

@@ -46,4 +46,13 @@ public class PaymentsController(IPaymentService paymentService, ResponseHandler 
         var result = await _paymentService.GetPaymentStatusAsync(paymentId, cancellationToken);
         return StatusCode((int)result.StatusCode, result);
     }
+    [HttpPost("validate-promo")]
+    public async Task<IActionResult> ValidatePromoCode([FromBody] ValidatePromoRequest request, CancellationToken cancellationToken = default)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
+
+        var result = await _paymentService.ValidatePromoCodeAsync(request, cancellationToken);
+        return StatusCode((int)result.StatusCode, result);
+    }
 }

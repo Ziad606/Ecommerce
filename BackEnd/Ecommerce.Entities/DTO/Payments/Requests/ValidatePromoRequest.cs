@@ -5,7 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace Ecommerce.Entities.DTO.Payments.Requests;
-public record BuyCartRequest(
-    string CustomerEmail,
-    string? PromoCode
+public record ValidatePromoRequest(
+     string PromoCode
 );

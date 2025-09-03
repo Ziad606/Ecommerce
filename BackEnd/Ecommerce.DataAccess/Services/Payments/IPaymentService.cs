@@ -14,4 +14,5 @@ public interface IPaymentService
     Task<Response<PaymentResponse>> BuyCartAsync(Guid cartId,BuyCartRequest request, CancellationToken cancellationToken = default);
     Task<Response<PaymentStatusResponse>> ConfirmPaymentAsync(Guid id, CancellationToken cancellationToken = default);
     Task<Response<PaymentStatusResponse>> GetPaymentStatusAsync(Guid id, CancellationToken cancellationToken = default);
+    public Task<Response<ValidatePromoResponse>> ValidatePromoCodeAsync(ValidatePromoRequest request, CancellationToken cancellationToken = default);
 }

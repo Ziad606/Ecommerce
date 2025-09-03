@@ -15,6 +15,9 @@ namespace Ecommerce.Services.Implementations
 		private readonly ResponseHandler _responseHandler = responseHandler;
 		private readonly ILogger<CartService> _logger = logger;
 
+
+
+
 		public async Task<Response<AddCartResponse>> AddItemToCartAsync(AddCartReq dto, string buyerId, CancellationToken cancellationToken = default)
 		{
 			_logger.LogInformation("Adding item to cart for BuyerId={BuyerId}, ProductId={ProductId}, Quantity={Quantity}",
@@ -95,7 +98,7 @@ namespace Ecommerce.Services.Implementations
 						Quantity = dto.Quantity,
 						CreatedAt = DateTime.UtcNow
 					};
-					cart.CartItems.Add(newCartItem);
+					await _context.CartItems.AddAsync(newCartItem, cancellationToken);
 					targetCartItem = newCartItem;
 
 					_logger.LogInformation("Added new cart item {CartItemId} for ProductId={ProductId}",
@@ -130,6 +133,125 @@ namespace Ecommerce.Services.Implementations
 					"An unexpected error occurred while adding item to cart.");
 			}
 		}
+		//public async Task<Response<AddCartResponse>> AddItemToCartAsync(AddCartReq dto, string buyerId, CancellationToken cancellationToken = default)
+		//{
+		//	_logger.LogInformation("Adding item to cart for BuyerId={BuyerId}, ProductId={ProductId}, Quantity={Quantity}",
+		//		buyerId, dto.ProductId, dto.Quantity);
+
+		//	try
+		//	{
+		//		var product = await _context.Products
+		//			.Include(p => p.Images)
+		//			.FirstOrDefaultAsync(p => p.Id == dto.ProductId && !p.IsDeleted, cancellationToken);
+
+		//		if (product == null)
+		//		{
+		//			_logger.LogWarning("Product with ID {ProductId} not found or deleted", dto.ProductId);
+		//			return _responseHandler.NotFound<AddCartResponse>("Product not found.");
+		//		}
+
+		//		if (!product.IsActive)
+		//		{
+		//			_logger.LogWarning("Product {ProductId} is not active", dto.ProductId);
+		//			return _responseHandler.BadRequest<AddCartResponse>("Product is not available.");
+		//		}
+
+		//		if (product.StockQuantity < dto.Quantity)
+		//		{
+		//			_logger.LogWarning("Insufficient stock for ProductId={ProductId}. Available: {Available}, Requested: {Requested}",
+		//				dto.ProductId, product.StockQuantity, dto.Quantity);
+		//			return _responseHandler.BadRequest<AddCartResponse>("Insufficient stock available.");
+		//		}
+
+		//		var cart = await _context.Carts
+		//			.Include(c => c.CartItems)
+		//			.FirstOrDefaultAsync(c => c.BuyerId == buyerId, cancellationToken);
+
+		//		if (cart == null)
+		//		{
+		//			cart = new Cart
+		//			{
+		//				Id = Guid.NewGuid(),
+		//				BuyerId = buyerId,
+		//				CreatedAt = DateTime.UtcNow,
+		//				CartItems = new List<CartItem>()
+		//			};
+		//			await _context.Carts.AddAsync(cart, cancellationToken);
+		//			_logger.LogInformation("New cart created for BuyerId={BuyerId}", buyerId);
+		//		}
+
+		//		var existingCartItem = cart.CartItems
+		//			.FirstOrDefault(ci => ci.ProductId == dto.ProductId);
+
+		//		CartItem targetCartItem;
+
+		//		if (existingCartItem != null)
+		//		{
+		//			var newTotalQuantity = existingCartItem.Quantity + dto.Quantity;
+		//			if (newTotalQuantity > product.StockQuantity)
+		//			{
+		//				_logger.LogWarning("Total quantity {TotalQuantity} exceeds stock {Stock} for ProductId={ProductId}",
+		//					newTotalQuantity, product.StockQuantity, dto.ProductId);
+		//				return _responseHandler.BadRequest<AddCartResponse>(
+		//					$"Cannot add {dto.Quantity} items. Maximum available: {product.StockQuantity - existingCartItem.Quantity}");
+		//			}
+
+		//			existingCartItem.Quantity = newTotalQuantity;
+		//			existingCartItem.UpdatedAt = DateTime.UtcNow;
+		//			targetCartItem = existingCartItem;
+
+		//			_logger.LogInformation("Updated existing cart item {CartItemId} quantity to {Quantity}",
+		//				existingCartItem.Id, newTotalQuantity);
+		//		}
+		//		else
+		//		{
+		//			var newCartItem = new CartItem
+		//			{
+		//				Id = Guid.NewGuid(),
+		//				CartId = cart.Id,
+		//				ProductId = dto.ProductId,
+		//				Quantity = dto.Quantity,
+		//				CreatedAt = DateTime.UtcNow
+		//			};
+
+
+		//			await _context.CartItems.AddAsync(newCartItem, cancellationToken);
+
+
+		//			targetCartItem = newCartItem;
+
+		//			_logger.LogInformation("Added new cart item {CartItemId} for ProductId={ProductId}",
+		//				newCartItem.Id, dto.ProductId);
+		//		}
+
+		//		cart.UpdatedAt = DateTime.UtcNow;
+		//		await _context.SaveChangesAsync(cancellationToken);
+
+		//		var response = new AddCartResponse
+		//		{
+		//			Id = targetCartItem.Id,
+		//			ProductId = targetCartItem.ProductId,
+		//			ProductName = product.Name,
+		//			ProductPrice = product.Price,
+		//			Quantity = targetCartItem.Quantity
+		//		};
+
+		//		_logger.LogInformation("Item successfully added to cart for BuyerId={BuyerId}", buyerId);
+		//		return _responseHandler.Success(response, "Item added to cart successfully.");
+		//	}
+		//	catch (DbUpdateException ex)
+		//	{
+		//		_logger.LogError(ex, "Database error while adding item to cart for BuyerId={BuyerId}", buyerId);
+		//		return _responseHandler.InternalServerError<AddCartResponse>(
+		//			"Database error occurred while adding item to cart.");
+		//	}
+		//	catch (Exception ex)
+		//	{
+		//		_logger.LogError(ex, "Unexpected error while adding item to cart for BuyerId={BuyerId}", buyerId);
+		//		return _responseHandler.InternalServerError<AddCartResponse>(
+		//			"An unexpected error occurred while adding item to cart.");
+		//	}
+		//}
 
 		public async Task<Response<GetCartResponse>> GetCartAsync(string buyerId, CancellationToken cancellationToken = default)
 		{

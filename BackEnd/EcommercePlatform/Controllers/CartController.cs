@@ -9,76 +9,66 @@ using System.Security.Claims;
 
 namespace Ecommerce.API.Controllers
 {
-	[Route("api/[controller]")]
-	[ApiController]
-	//[Authorize(Roles = "User")]
-	public class CartController(ICartService cartService, ResponseHandler responseHandler) : ControllerBase
-	{
-		private readonly ICartService _cartService = cartService;
-		private readonly ResponseHandler _responseHandler = responseHandler;
+    [Route("api/[controller]")]
+    [ApiController]
+    [Authorize(Roles = "User")]
+    public class CartController(ICartService cartService, ResponseHandler responseHandler) : ControllerBase
+    {
+        private readonly ICartService _cartService = cartService;
+        private readonly ResponseHandler _responseHandler = responseHandler;
 
-		[HttpPost("items")]
-		public async Task<IActionResult> AddItemToCart([FromBody] AddCartReq request, CancellationToken cancellationToken)
-		{
-			if (!ModelState.IsValid)
-				return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
+        [HttpPost("items")]
+        public async Task<IActionResult> AddItemToCart([FromBody] AddCartReq request, CancellationToken cancellationToken)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
 
-			var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-			//if (string.IsNullOrWhiteSpace(buyerId))
-			//	return Unauthorized(_responseHandler.Unauthorized<object>("User not authenticated."));
+            var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-			var result = await _cartService.AddItemToCartAsync(request, buyerId, cancellationToken);
-			return StatusCode((int)result.StatusCode, result);
-		}
+            var result = await _cartService.AddItemToCartAsync(request, buyerId!, cancellationToken);
+            return StatusCode((int)result.StatusCode, result);
+        }
 
-		[HttpGet("")]
-		public async Task<IActionResult> GetCart(CancellationToken cancellationToken)
-		{
-			var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-			//if (string.IsNullOrWhiteSpace(buyerId))
-			//	return Unauthorized(_responseHandler.Unauthorized<object>("User not authenticated."));
+        [HttpGet("")]
+        public async Task<IActionResult> GetCart(CancellationToken cancellationToken)
+        {
+            var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-			var result = await _cartService.GetCartAsync(buyerId, cancellationToken);
-			return StatusCode((int)result.StatusCode, result);
-		}
+            var result = await _cartService.GetCartAsync(buyerId!, cancellationToken);
+            return StatusCode((int)result.StatusCode, result);
+        }
 
-		[HttpPut("items/{cartItemId:guid}")]
-		public async Task<IActionResult> UpdateCartItemQuantity(
-			[FromRoute] Guid cartItemId,
-			[FromBody] UpdateCartRequest request,
-			CancellationToken cancellationToken)
-		{
-			if (!ModelState.IsValid)
-				return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
+        [HttpPut("items/{cartItemId:guid}")]
+        public async Task<IActionResult> UpdateCartItemQuantity(
+            [FromRoute] Guid cartItemId,
+            [FromBody] UpdateCartRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
 
-			var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-			//if (string.IsNullOrWhiteSpace(buyerId))
-			//	return Unauthorized(_responseHandler.Unauthorized<object>("User not authenticated."));
+            var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-			var result = await _cartService.UpdateCartItemQuantityAsync(buyerId, cartItemId, request.Quantity, cancellationToken);
-			return StatusCode((int)result.StatusCode, result);
-		}
+            var result = await _cartService.UpdateCartItemQuantityAsync(buyerId!, cartItemId, request.Quantity, cancellationToken);
+            return StatusCode((int)result.StatusCode, result);
+        }
 
-		[HttpDelete("items/{cartItemId:guid}")]
-		public async Task<IActionResult> RemoveItemFromCart([FromRoute] Guid cartItemId, CancellationToken cancellationToken)
-		{
-			var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-			//if (string.IsNullOrWhiteSpace(buyerId))
-			//	return Unauthorized(_responseHandler.Unauthorized<object>("User not authenticated."));
+        [HttpDelete("items/{cartItemId:guid}")]
+        public async Task<IActionResult> RemoveItemFromCart([FromRoute] Guid cartItemId, CancellationToken cancellationToken)
+        {
+            var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-			var result = await _cartService.RemoveItemFromCartAsync(buyerId, cartItemId, cancellationToken);
-			return StatusCode((int)result.StatusCode, result);
-		}
+            var result = await _cartService.RemoveItemFromCartAsync(buyerId!, cartItemId, cancellationToken);
+            return StatusCode((int)result.StatusCode, result);
+        }
 
-		[HttpDelete("")]
-		public async Task<IActionResult> ClearCart(CancellationToken cancellationToken)
-		{
-			var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-			//if (string.IsNullOrWhiteSpace(buyerId))
-			//	return Unauthorized(_responseHandler.Unauthorized<object>("User not authenticated."));
+        [HttpDelete("")]
+        public async Task<IActionResult> ClearCart(CancellationToken cancellationToken)
+        {
+            var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-			var result = await _cartService.ClearCartAsync(buyerId, cancellationToken);
-			return StatusCode((int)result.StatusCode, result);
-		}
-	}
+            var result = await _cartService.ClearCartAsync(buyerId!, cancellationToken);
+            return StatusCode((int)result.StatusCode, result);
+        }
+    }
 }

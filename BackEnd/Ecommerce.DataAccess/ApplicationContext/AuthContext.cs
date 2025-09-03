@@ -1,5 +1,4 @@
-﻿using Ecommerce.DataAccess.EntitiesConfigurations;
-using Ecommerce.Entities.Models;
+﻿using Ecommerce.Entities.Models;
 using Ecommerce.Entities.Models.Auth.Identity;
 using Ecommerce.Entities.Models.Auth.UserTokens;
 using Ecommerce.Entities.Models.Reviews;
@@ -37,5 +36,6 @@ namespace Ecommerce.DataAccess.ApplicationContext
         public DbSet<Wishlist> Wishlists { get; set; }
         public DbSet<WishlistItem> WishlistItems { get; set; }
         public DbSet<Payment> Payments => Set<Payment>();
+        public DbSet<Advertisement> Advertisements { get; set; }
     }
 }

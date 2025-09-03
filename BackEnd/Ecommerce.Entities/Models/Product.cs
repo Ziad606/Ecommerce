@@ -18,6 +18,7 @@ namespace Ecommerce.Entities.Models
 
         [Required]
         public decimal Price { get; set; }
+        public double AverageRating { get; set; }
 
         [Required]
         public Guid CategoryId { get; set; }

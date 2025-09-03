@@ -25,4 +25,43 @@ public class AdvertisementsController(AuthContext context, ResponseHandler respo
         var result = await _advertisementService.CreateAdvertisementAsync(request, cancellationToken);
         return StatusCode((int)result.StatusCode, result);
     }
+
+    [HttpGet("")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetAllAdvertisements(CancellationToken cancellationToken)
+    {
+        var result = await _advertisementService.GetAllAdvertisementsAsync(cancellationToken);
+        return StatusCode((int)result.StatusCode, result);
+    }
+
+    [HttpGet("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetAllAdvertisements(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _advertisementService.GetAdvertisementByIdAsync(id, cancellationToken);
+        return StatusCode((int)result.StatusCode, result);
+    }
+
+
+    [HttpPut("")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UpdateAdvertisement([FromForm] UpdateAdvertisementRequest request, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
+        }
+        var result = await _advertisementService.UpdateAdvertisementAsync(request, cancellationToken);
+        return StatusCode((int)result.StatusCode, result);
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> DeleteAdvertisements(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _advertisementService.DeleteAdvertisementAsync(id, cancellationToken);
+        return StatusCode((int)result.StatusCode, result);
+    }
+
+
 }

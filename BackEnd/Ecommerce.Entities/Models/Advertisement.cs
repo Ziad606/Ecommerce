@@ -10,6 +10,11 @@ public class Advertisement
     public DateTime StartDate { get; set; } = DateTime.UtcNow;
     public DateTime EndDate { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool IsDeleted { get; set; } = true;
+
+    public DateTime CreatedAt { get; set; }
+    public DateTime DeletedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
     // Navigation property
     public Product? Product { get; set; }

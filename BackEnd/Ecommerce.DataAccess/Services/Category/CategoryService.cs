@@ -1,13 +1,13 @@
-using System.Linq.Expressions;
 using Ecommerce.DataAccess.ApplicationContext;
 using Ecommerce.Entities.DTO.Category;
 using Ecommerce.Entities.Shared.Bases;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Linq.Expressions;
 
 namespace Ecommerce.DataAccess.Services.Category;
 
-public class CategoryService(AuthContext context, 
+public class CategoryService(AuthContext context,
     ILogger<CategoryService> logger,
     ResponseHandler responseHandler) : ICategoryService
 
@@ -22,7 +22,7 @@ public class CategoryService(AuthContext context,
         try
         {
             var isExist = await _context.Categories
-                .AnyAsync(c => c.Name.ToLower() == dto.Name.ToLower() , cancellationToken);
+                .AnyAsync(c => c.Name.ToLower() == dto.Name.ToLower() && !c.IsDeleted, cancellationToken);
             if (isExist)
             {
                 _logger.LogWarning("Category with name {Name} already exists.", dto.Name);
@@ -35,12 +35,12 @@ public class CategoryService(AuthContext context,
                 Description = dto.Description
             };
             await _context.Categories.AddAsync(category, cancellationToken);
-            
+
             await _context.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-            
+
             _logger.LogInformation("Category {CategoryId} added successfully.", category.Id);
-            return   responseHandler.Created(category.Id, "Category added successfully.");
+            return responseHandler.Created(category.Id, "Category added successfully.");
         }
         catch
         {
@@ -49,10 +49,10 @@ public class CategoryService(AuthContext context,
             return _responseHandler.InternalServerError<Guid>("Failed to add category.");
         }
 
-            
+
     }
-    
-    
+
+
     public async Task<Response<List<GetCategoryResponse>>> GetAllCategoriesAsync(CancellationToken cancellationToken = default)
     {
         var categories = await _context.Categories
@@ -110,7 +110,7 @@ public class CategoryService(AuthContext context,
             _logger.LogWarning("UpdateCategoryAsync - Category not found. ID: {Id}", id);
             return _responseHandler.NotFound<Guid>("Category not found.");
         }
-            
+
         if (category.Name == dto.Name && category.Description == dto.Description)
         {
             return _responseHandler.BadRequest<Guid>("No changes detected.");
@@ -131,7 +131,7 @@ public class CategoryService(AuthContext context,
         category.Name = dto.Name;
         category.Description = dto.Description;
         category.UpdatedAt = DateTime.UtcNow;
-            
+
         _context.Categories.Update(category);
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -139,7 +139,7 @@ public class CategoryService(AuthContext context,
 
         return _responseHandler.Success(category.Id, "Category updated successfully.");
     }
-    
+
     public async Task<Response<bool>> DeleteCategoryAsync(Guid id, CancellationToken cancellationToken = default)
     {
 
@@ -162,9 +162,9 @@ public class CategoryService(AuthContext context,
 
         return _responseHandler.Success(true, "Category deleted successfully.");
     }
-    
-    
-    
+
+
+
     private async Task<GetCategoryResponse?> GetCategoryAsync(Expression<Func<Ecommerce.Entities.Models.Category, bool>> predicate)
     {
         return await _context.Categories

@@ -1,7 +1,5 @@
-﻿using System.Net;
-using System.Net.Mail;
-
-using Ecommerce.DataAccess.ApplicationContext;
+﻿using Ecommerce.DataAccess.ApplicationContext;
+using Ecommerce.DataAccess.Services.Advertisement;
 using Ecommerce.DataAccess.Services.Auth;
 using Ecommerce.DataAccess.Services.Category;
 using Ecommerce.DataAccess.Services.Email;
@@ -9,17 +7,17 @@ using Ecommerce.DataAccess.Services.ImageUploading;
 using Ecommerce.DataAccess.Services.OAuth;
 using Ecommerce.DataAccess.Services.Order;
 using Ecommerce.DataAccess.Services.OTP;
-using Ecommerce.DataAccess.Services.Payments;
 using Ecommerce.DataAccess.Services.Products;
 using Ecommerce.DataAccess.Services.Token;
 using Ecommerce.DataAccess.Services.Wishlist;
 using Ecommerce.Services.Implementations;
 using Ecommerce.Services.Interfaces;
 using Ecommerce.Utilities.Configurations;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.Net;
+using System.Net.Mail;
 
 namespace Ecommerce.DataAccess.Extensions
 {
@@ -45,10 +43,11 @@ namespace Ecommerce.DataAccess.Extensions
             services.AddScoped<IProductService, ProductService>();
             services.AddScoped<ICartService, CartService>();
             services.AddScoped<IOrderService, OrderService>();
-            services.AddScoped<IWishlistService,WishlistService>();
+            services.AddScoped<IWishlistService, WishlistService>();
             services.AddScoped<ICategoryService, CategoryService>();
+            services.AddScoped<IAdvertisementService, AdvertisementService>();
 
-			return services;
+            return services;
         }
 
         public static IServiceCollection AddEmailServices(this IServiceCollection services, IConfiguration configuration)

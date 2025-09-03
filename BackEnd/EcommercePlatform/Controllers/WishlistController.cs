@@ -2,78 +2,69 @@
 using Ecommerce.Entities.Shared.Bases;
 using Ecommerce.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
 namespace Ecommerce.API.Controllers
 {
-	[Route("api/[controller]")]
-	[ApiController]
-	[Authorize(Roles = "User")]
-	public class WishlistController(IWishlistService wishlistService, ResponseHandler responseHandler) : ControllerBase
-	{
-		private readonly IWishlistService _wishlistService = wishlistService;
-		private readonly ResponseHandler _responseHandler = responseHandler;
-
-		
-		[HttpPost("items")]
-		public async Task<IActionResult> AddItemToWishlist([FromBody] AddWishlistItemReq request, CancellationToken cancellationToken)
-		{
-			if (!ModelState.IsValid)
-				return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
-
-			var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-			if (string.IsNullOrWhiteSpace(buyerId))
-				return Unauthorized(_responseHandler.Unauthorized<object>("User not authenticated."));
-
-			var result = await _wishlistService.AddItemToWishlistAsync(request, buyerId, cancellationToken);
-			return StatusCode((int)result.StatusCode, result);
-		}
+    [Route("api/[controller]")]
+    [ApiController]
+    [Authorize(Roles = "User")]
+    public class WishlistController(IWishlistService wishlistService, ResponseHandler responseHandler) : ControllerBase
+    {
+        private readonly IWishlistService _wishlistService = wishlistService;
+        private readonly ResponseHandler _responseHandler = responseHandler;
 
 
-		
-		[HttpGet("")]
-		public async Task<IActionResult> GetWishlist(CancellationToken cancellationToken)
-		{
-			var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-			if (string.IsNullOrWhiteSpace(buyerId))
-				return Unauthorized(_responseHandler.Unauthorized<object>("User not authenticated."));
+        [HttpPost("items")]
+        public async Task<IActionResult> AddItemToWishlist([FromBody] AddWishlistItemReq request, CancellationToken cancellationToken)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
 
-			var result = await _wishlistService.GetWishlistAsync(buyerId, cancellationToken);
-			return StatusCode((int)result.StatusCode, result);
-		}
+            var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var result = await _wishlistService.AddItemToWishlistAsync(request, buyerId!, cancellationToken);
+            return StatusCode((int)result.StatusCode, result);
+        }
 
 
 
-		[HttpDelete("items/{itemId:guid}")]
-		public async Task<IActionResult> RemoveItemFromWishlist([FromRoute] Guid itemId, CancellationToken cancellationToken)
-		{
-			var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-			if (string.IsNullOrWhiteSpace(buyerId))
-				return Unauthorized(_responseHandler.Unauthorized<object>("User not authenticated."));
+        [HttpGet("")]
+        public async Task<IActionResult> GetWishlist(CancellationToken cancellationToken)
+        {
+            var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-			var result = await _wishlistService.RemoveItemFromWishlistAsync(buyerId, itemId, cancellationToken);
-			return StatusCode((int)result.StatusCode, result);
-		}
+            var result = await _wishlistService.GetWishlistAsync(buyerId!, cancellationToken);
+            return StatusCode((int)result.StatusCode, result);
+        }
 
 
-		[HttpPost("items/{itemId:guid}/move-to-cart")]
-		public async Task<IActionResult> MoveItemToCart(
-			[FromRoute] Guid itemId,
-			[FromBody] MoveToCartRequest request,
-			CancellationToken cancellationToken)
-		{
-			if (!ModelState.IsValid)
-				return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
 
-			var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-			if (string.IsNullOrWhiteSpace(buyerId))
-				return Unauthorized(_responseHandler.Unauthorized<object>("User not authenticated."));
+        [HttpDelete("items/{itemId:guid}")]
+        public async Task<IActionResult> RemoveItemFromWishlist([FromRoute] Guid itemId, CancellationToken cancellationToken)
+        {
+            var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-			var result = await _wishlistService.MoveItemToCartAsync(buyerId, itemId, request.Quantity, cancellationToken);
-			return StatusCode((int)result.StatusCode, result);
-		}
+            var result = await _wishlistService.RemoveItemFromWishlistAsync(buyerId!, itemId, cancellationToken);
+            return StatusCode((int)result.StatusCode, result);
+        }
 
-	}
+
+        [HttpPost("items/{itemId:guid}/move-to-cart")]
+        public async Task<IActionResult> MoveItemToCart(
+            [FromRoute] Guid itemId,
+            [FromBody] MoveToCartRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
+
+            var buyerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var result = await _wishlistService.MoveItemToCartAsync(buyerId!, itemId, request.Quantity, cancellationToken);
+            return StatusCode((int)result.StatusCode, result);
+        }
+
+    }
 }

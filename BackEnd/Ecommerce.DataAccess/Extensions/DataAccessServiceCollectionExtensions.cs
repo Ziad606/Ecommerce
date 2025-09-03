@@ -27,10 +27,11 @@ namespace Ecommerce.DataAccess.Extensions
     {
         public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration)
         {
+            var connectionString = configuration.GetConnectionString("DevCS") ??
+                    throw new InvalidOperationException("Connection string 'DevCS' not found.");
             services.AddDbContext<AuthContext>(options =>
-                options.UseSqlServer(
-                    configuration.GetConnectionString("DevCS")));
-
+                options.UseSqlServer(connectionString)
+            );
             return services;
         }
         public static IServiceCollection AddApplicationServices(this IServiceCollection services)

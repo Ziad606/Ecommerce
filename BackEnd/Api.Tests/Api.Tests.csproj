@@ -19,7 +19,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\DataAccess.Tests\DataAccess.Tests.csproj" />
     <ProjectReference Include="..\EcommercePlatform\Ecommerce.API.csproj" />
   </ItemGroup>
 

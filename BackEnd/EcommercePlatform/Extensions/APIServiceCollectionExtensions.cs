@@ -17,13 +17,6 @@ using System.Threading.RateLimiting;
 
 namespace Ecommerce.API.Extensions
 {
-    /// <summary>
-    /// Handles all payment operations such as buying products, carts, confirming payments, and checking statuses.
-    /// </summary>
-    /// <remarks>
-    /// This controller requires authentication. 
-    /// You can enhance authorization by assigning roles or policies if needed.
-    /// </remarks>
     public static class APIServiceCollectionExtensions
     {
         public static IServiceCollection AddServicesConfigurations(this IServiceCollection services,IConfiguration configuration)
@@ -123,6 +116,13 @@ namespace Ecommerce.API.Extensions
                 .AddControllers() 
                 .AddJsonOptions(options => 
                 options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+            services.Configure<IdentityOptions>(options =>
+            {
+                options.User.RequireUniqueEmail = true;
+                options.Password.RequiredLength = 8;
+                options.SignIn.RequireConfirmedEmail = true;
+            });
 
             return services;
         }

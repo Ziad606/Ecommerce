@@ -1,6 +1,4 @@
-﻿using System.Security.Claims;
-
-using Ecommerce.DataAccess.ApplicationContext;
+﻿using Ecommerce.DataAccess.ApplicationContext;
 using Ecommerce.DataAccess.Services.Email;
 using Ecommerce.DataAccess.Services.OTP;
 using Ecommerce.DataAccess.Services.Token;
@@ -10,50 +8,58 @@ using Ecommerce.Entities.DTO.Account.Auth.Register;
 using Ecommerce.Entities.DTO.Account.Auth.ResetPassword;
 using Ecommerce.Entities.Models.Auth.Identity;
 using Ecommerce.Entities.Shared.Bases;
-
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
-
+using System.Security.Claims;
 using LoginRequest = Ecommerce.Entities.DTO.Account.Auth.Login.LoginRequest;
 using ResetPasswordRequest = Ecommerce.Entities.DTO.Account.Auth.ResetPassword.ResetPasswordRequest;
 
 
 namespace Ecommerce.DataAccess.Services.Auth
 {
-    public class AuthService : IAuthService
+    public class AuthService(UserManager<User> userManager,
+            AuthContext context,
+            IOTPService oTPService,
+            IEmailService emailService,
+            ResponseHandler responseHandler,
+            ITokenStoreService tokenStoreService,
+            ILogger<AuthService> logger,
+            SignInManager<User> signInManager
+        ) : IAuthService
     {
-        private readonly UserManager<User> _userManager;
-        private readonly AuthContext _context;
-        private readonly IEmailService _emailService;
-        private readonly IOTPService _otpService;
-        private readonly ResponseHandler _responseHandler;
-        private readonly ITokenStoreService _tokenStoreService;
-        private readonly ILogger<AuthService> _logger;
-
-        public AuthService(UserManager<User> userManager, AuthContext context, IEmailService emailService, IOTPService otpService, ResponseHandler responseHandler, ITokenStoreService tokenStoreService, ILogger<AuthService> logger)
-        {
-            _userManager = userManager;
-            _context = context;
-            _emailService = emailService;
-            _otpService = otpService;
-            _responseHandler = responseHandler;
-            _tokenStoreService = tokenStoreService;
-            _logger = logger;
-        }
+        private readonly UserManager<User> _userManager = userManager;
+        private readonly IOTPService _otpService = oTPService;
+        private readonly AuthContext _context = context;
+        private readonly IEmailService _emailService = emailService;
+        private readonly ResponseHandler _responseHandler = responseHandler;
+        private readonly ITokenStoreService _tokenStoreService = tokenStoreService;
+        private readonly ILogger<AuthService> _logger = logger;
+        private readonly SignInManager<User> _signInManager = signInManager;
 
         public async Task<Response<LoginResponse>> LoginAsync(LoginRequest loginRequest)
         {
             // Find user by email or phone number
-            User? user = await FindUserByEmailOrPhoneAsync(loginRequest.Email, loginRequest.PhoneNumber);
+            User? user = await FindUserByEmailOrPhoneAsync(loginRequest.Email!); //, loginRequest.PhoneNumber
 
             if (user == null)
                 return _responseHandler.NotFound<LoginResponse>("User not found.");
 
+
+
             // Check password
-            if (!await _userManager.CheckPasswordAsync(user, loginRequest.Password))
-                return _responseHandler.BadRequest<LoginResponse>("Invalid password.");
+            var result = await _signInManager.CheckPasswordSignInAsync(user,loginRequest.Password,true);
+
+            if (result.IsLockedOut)
+                return _responseHandler.BadRequest<LoginResponse>("User account is locked out.");
+
+            if (result.IsNotAllowed)
+                return _responseHandler.BadRequest<LoginResponse>("Sign-in not allowed. Please verify your account.");
+
+            if (!result.Succeeded)
+                return _responseHandler.BadRequest<LoginResponse>("Invalid credential.");
 
             // Check if email is confirmed
             if (!user.EmailConfirmed)
@@ -82,9 +88,9 @@ namespace Ecommerce.DataAccess.Services.Auth
             var response = new LoginResponse
             {
                 Id = user.Id,
-                Email = user.Email!,
-                PhoneNumber = user.PhoneNumber!,
-                Role = roles.FirstOrDefault()!,
+                Email = user.Email ?? string.Empty,
+                PhoneNumber = user.PhoneNumber ?? string.Empty,
+                Role = roles.FirstOrDefault() ?? string.Empty,
                 IsEmailConfirmed = user.EmailConfirmed,
                 AccessToken = tokens.AccessToken,
                 RefreshToken = tokens.RefreshToken,
@@ -109,6 +115,9 @@ namespace Ecommerce.DataAccess.Services.Auth
             {
                 var user = new User
                 {
+                    FirstName = registerRequest.FirstName,
+                    LastName = registerRequest.LastName,
+                    DateOfBirth = registerRequest.BirthDate,
                     UserName = registerRequest.Email, // Modify it by what you need
                     Email = registerRequest.Email,
                     PhoneNumber = registerRequest.PhoneNumber,
@@ -124,22 +133,21 @@ namespace Ecommerce.DataAccess.Services.Auth
                 }
 
                 // Assign User role
-                await _userManager.AddToRoleAsync(user, "USER");
+                await _userManager.AddToRoleAsync(user, "User");
                 _logger.LogInformation("User created and role 'User' assigned. ID: {UserId}", user.Id);
 
-                await _userManager.CreateAsync(user);
 
                 var tokens = await _tokenStoreService.GenerateAndStoreTokensAsync(user.Id, user);
 
-                // var otp = await _otpService.GenerateAndStoreOtpAsync(user.Id);
-                //
-                // // Send OTP via Email
-                // await _emailService.SendOtpEmailAsync(user, otp);
-                //
-                // await _context.SaveChangesAsync();
-                // await transaction.CommitAsync();
-                //
-                // _logger.LogInformation("User registration completed successfully. Email sent to {Email}", registerRequest.Email);
+                //var otp = await _otpService.GenerateAndStoreOtpAsync(user.Id);
+
+                // Send OTP via Email
+                //await _emailService.SendOtpEmailAsync(user, otp);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("User registration completed successfully. Email sent to {Email}", registerRequest.Email);
 
 
                 var response = new RegisterResponse
@@ -168,7 +176,7 @@ namespace Ecommerce.DataAccess.Services.Auth
             _logger.LogInformation("Starting ForgotPasswordAsync for Email: {Email}, Phone: {Phone}", model.Email, model.PhoneNumber);
 
             // Find user by email or phone number
-            User? user = await FindUserByEmailOrPhoneAsync(model.Email, model.PhoneNumber);
+            User? user = await FindUserByEmailOrPhoneAsync(model.Email!); //, model.PhoneNumber
 
             if (user == null)
             {
@@ -188,7 +196,7 @@ namespace Ecommerce.DataAccess.Services.Auth
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to send OTP email to user ID: {UserId}", user.Id);
-                //return _responseHandler.InternalServerError<ForgetPasswordResponse>("Failed to send OTP.");
+                return _responseHandler.InternalServerError<ForgetPasswordResponse>("Failed to send OTP.");
             }
             var response = new ForgetPasswordResponse
             {
@@ -238,8 +246,8 @@ namespace Ecommerce.DataAccess.Services.Auth
             var response = new ResetPasswordResponse
             {
                 UserId = user.Id,
-                Email = user.Email,
-                PhoneNumber = user.PhoneNumber,
+                Email = user.Email ?? string.Empty,
+                PhoneNumber = user.PhoneNumber ?? string.Empty,
                 Role = roles.FirstOrDefault() ?? "USER"
             };
             _logger.LogInformation("ResetPasswordAsync completed successfully for User ID: {UserId}", user.Id);
@@ -274,13 +282,13 @@ namespace Ecommerce.DataAccess.Services.Auth
                 return _responseHandler.NotFound<string>("User not found.");
 
             if (user.EmailConfirmed)
-                return _responseHandler.Success<string>(null, "Email is already verified. No need to resend OTP.");
+                return _responseHandler.Success<string>(default!, "Email is already verified. No need to resend OTP.");
 
             var otp = await _otpService.GenerateAndStoreOtpAsync(user.Id);
 
             await _emailService.SendOtpEmailAsync(user, otp);
 
-            return _responseHandler.Success<string>(null, "OTP resent successfully. Please check your email.");
+            return _responseHandler.Success<string>(default!, "OTP resent successfully. Please check your email.");
         }
 
         public async Task<RefreshTokenResponse> RefreshTokenAsync(string refreshToken)
@@ -316,7 +324,7 @@ namespace Ecommerce.DataAccess.Services.Auth
 
                 _logger.LogInformation("Generating new access and refresh tokens for user: {UserId}", user.Id);
                 var userTokens = await _tokenStoreService.GenerateAndStoreTokensAsync(user.Id, user);
-                
+
                 await _tokenStoreService.SaveRefreshTokenAsync(user.Id, userTokens.RefreshToken);
                 _logger.LogInformation("New refresh token saved for user: {UserId}", user.Id);
 
@@ -347,12 +355,12 @@ namespace Ecommerce.DataAccess.Services.Auth
                 return "Phone number is already registered.";
             return null;
         }
-        private async Task<User?> FindUserByEmailOrPhoneAsync(string email, string phone)
+        private async Task<User?> FindUserByEmailOrPhoneAsync(string email) //, string phone
         {
             if (!string.IsNullOrEmpty(email))
                 return await _userManager.FindByEmailAsync(email);
-            if (!string.IsNullOrEmpty(phone))
-                return await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == phone);
+            //if (!string.IsNullOrEmpty(phone))
+            //    return await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == phone);
             return null;
         }
 
@@ -370,7 +378,7 @@ namespace Ecommerce.DataAccess.Services.Auth
                 // Invalidate all refresh tokens for this user
                 await _tokenStoreService.InvalidateOldTokensAsync(userId);
 
-                return _responseHandler.Success<string>(null,"Logged out successfully");
+                return _responseHandler.Success<string>(default!, "Logged out successfully");
             }
             catch (Exception ex)
             {
@@ -414,7 +422,7 @@ namespace Ecommerce.DataAccess.Services.Auth
                 // Invalidate all existing refresh tokens for security
                 await _tokenStoreService.InvalidateOldTokensAsync(userId);
 
-                return _responseHandler.Success<string>(null,"Password changed successfully. Please login again.");
+                return _responseHandler.Success<string>(default!, "Password changed successfully. Please login again.");
             }
             catch (Exception ex)
             {

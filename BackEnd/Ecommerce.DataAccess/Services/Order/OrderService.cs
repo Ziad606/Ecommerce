@@ -1,19 +1,10 @@
 ﻿using Ecommerce.DataAccess.ApplicationContext;
-using Ecommerce.DataAccess.Services.ImageUploading;
-using Ecommerce.DataAccess.Services.Products;
 using Ecommerce.Entities.DTO.Orders;
 using Ecommerce.Entities.Shared.Bases;
-using Ecommerce.Services.Implementations;
 using Ecommerce.Services.Interfaces;
 using Ecommerce.Utilities.Enums;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Ecommerce.DataAccess.Services.Order
 {
@@ -108,7 +99,7 @@ namespace Ecommerce.DataAccess.Services.Order
                 return _responseHandler.BadRequest<Guid>("Cart not found.");
             }
 
-            if (!cart.Items.Any())
+            if (!cart.Data.Items.Any())
             {
                 _logger.LogWarning("Cart is empty.");
                 return _responseHandler.BadRequest<Guid>("Cart is empty.");
@@ -125,7 +116,7 @@ namespace Ecommerce.DataAccess.Services.Order
                 // ShippingPrice, CourierService 
             };
 
-            foreach (var item in cart.Items)
+            foreach (var item in cart.Data.Items)
             {
                 var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == item.ProductId && !p.IsDeleted);
                 if (product == null)
@@ -280,7 +271,8 @@ namespace Ecommerce.DataAccess.Services.Order
             }
         }
 
-        public async Task<Response<GetOrdersResponse>> GetOrdersAsync(GetOrdersRequest query, Guid? buyerId = null) {
+        public async Task<Response<GetOrdersResponse>> GetOrdersAsync(GetOrdersRequest query, Guid? buyerId = null)
+        {
             try
             {
                 var queryable = _context.Orders
@@ -290,7 +282,7 @@ namespace Ecommerce.DataAccess.Services.Order
                 // Filter by buyer ID if provided
 
                 if (buyerId.HasValue)
-                { 
+                {
                     _logger.LogInformation("Filtering orders by buyer ID: {BuyerId}", buyerId.Value);
                     queryable = queryable.Where(o => o.BuyerId == buyerId.Value.ToString());
                 }
@@ -316,7 +308,7 @@ namespace Ecommerce.DataAccess.Services.Order
                     .Select(o => new OrderSummaryDto
                     {
                         OrderId = o.Id,
-                        BuyerName = o.Buyer.FirstName +" " + o.Buyer.LastName,
+                        BuyerName = o.Buyer.FirstName + " " + o.Buyer.LastName,
                         Status = o.Status,
                         TotalPrice = o.TotalPrice
                     })

@@ -2,38 +2,72 @@
 using Ecommerce.Entities.DTO.Payments.Requests;
 using Ecommerce.Entities.DTO.Payments.Responses;
 using Ecommerce.Entities.Models;
+using Ecommerce.Entities.Shared.Bases;
 using Ecommerce.Utilities.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Stripe;
 
 namespace Ecommerce.DataAccess.Services.Payments;
 
-public class PaymentService(PaymentIntentService paymentIntentService, AuthContext context) : IPaymentService
+public class PaymentService(PaymentIntentService paymentIntentService,
+        AuthContext context,
+        ResponseHandler responseHandler,
+        ILogger<PaymentService> logger,
+        IDiscountService discountService
+    ) : IPaymentService
 {
     private readonly PaymentIntentService _paymentIntentService = paymentIntentService;
     private readonly AuthContext _context = context;
+    private readonly ResponseHandler _responseHandler = responseHandler;
+    private readonly ILogger<PaymentService> _logger = logger;
+    private readonly IDiscountService _discountService = discountService;
 
-    public async Task<PaymentResponse> BuyProductAsync(Guid productId, BuyProductRequest request, CancellationToken cancellationToken = default)
+    public async Task<Response<PaymentResponse>> BuyProductAsync(Guid productId, BuyProductRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
+            _logger.LogInformation("BuyProductAsync called for ProductId={ProductId}, CustomerEmail={CustomerEmail}",
+                productId, request.CustomerEmail);
+
             var product = await _context.Products
                 .AsNoTracking()
                 .SingleOrDefaultAsync(x => x.Id.Equals(productId), cancellationToken);
 
             if (product is null)
             {
-                return new PaymentResponse(false, null, null, string.Empty, 0);
+                _logger.LogWarning("Product with ID {ProductId} not found", productId);
+                return _responseHandler.NotFound<PaymentResponse>("Product not found");
             }
 
             if (product.StockQuantity < request.Quantity)
             {
-                return new PaymentResponse(false, null, null, string.Empty, 0);
+                _logger.LogWarning("Insufficient stock for ProductId={ProductId}. Requested: {RequestedQuantity}, Available: {AvailableQuantity}",
+                    productId, request.Quantity, product.StockQuantity);
+                return _responseHandler.BadRequest<PaymentResponse>("Insufficient stock quantity");
             }
 
-            var amount = product.Price * request.Quantity;
-            var amountInCents = (long)(amount * 100);
+            var originalAmount = product.Price * request.Quantity;
+            var finalAmount = originalAmount;
+            decimal? discountAmount = null;
+            string? promoCodeUsed = null;
+            if (!string.IsNullOrWhiteSpace(request.PromoCode))
+            {
+                var (isValid, discountPercentage, message) = await _discountService.ValidatePromoCodeAsync(request.PromoCode);
 
+                if (!isValid)
+                {
+                    return _responseHandler.BadRequest<PaymentResponse>(message);
+                }
+
+                discountAmount = _discountService.CalculateDiscount(originalAmount, discountPercentage);
+                finalAmount = originalAmount - discountAmount.Value;
+                promoCodeUsed = request.PromoCode.Trim().ToUpper();
+
+                _logger.LogInformation("Discount applied: {DiscountAmount} ({DiscountPercentage}%) for PromoCode={PromoCode}",
+                    discountAmount, discountPercentage, promoCodeUsed);
+            }
+            var amountInCents = (long)(finalAmount * 100);
             var options = new PaymentIntentCreateOptions
             {
                 Amount = amountInCents,
@@ -43,7 +77,11 @@ public class PaymentService(PaymentIntentService paymentIntentService, AuthConte
                 {
                     ["product_id"] = productId.ToString(),
                     ["quantity"] = request.Quantity.ToString(),
-                    ["customer_email"] = request.CustomerEmail
+                    ["customer_email"] = request.CustomerEmail,
+                    ["original_amount"] = originalAmount.ToString(),
+                    ["final_amount"] = finalAmount.ToString(),
+                    ["promo_code"] = promoCodeUsed ?? "",
+                    ["discount_amount"] = discountAmount?.ToString() ?? "0"
                 }
             };
 
@@ -53,7 +91,7 @@ public class PaymentService(PaymentIntentService paymentIntentService, AuthConte
             {
                 BuyerId = request.CustomerEmail,
                 Status = OrderStatus.Pending,
-                TotalPrice = amount,
+                TotalPrice = finalAmount,
                 OrderDate = DateTime.UtcNow
             };
 
@@ -70,7 +108,10 @@ public class PaymentService(PaymentIntentService paymentIntentService, AuthConte
 
             var payment = new Payment
             {
-                Amount = amount,
+                Amount = finalAmount,
+                OriginalAmount = originalAmount,
+                DiscountAmount = discountAmount,
+                PromoCodeUsed = promoCodeUsed,
                 Currency = "USD",
                 Status = Status.Pending,
                 StripePaymentIntentId = paymentIntent.Id,
@@ -83,24 +124,46 @@ public class PaymentService(PaymentIntentService paymentIntentService, AuthConte
             await _context.Payments.AddAsync(payment, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
 
-            return new PaymentResponse(
+            _logger.LogInformation("Payment created successfully. PaymentId={PaymentId}, OrderId={OrderId}",
+                payment.Id, order.Id);
+
+            var paymentResponse = new PaymentResponse(
                 true,
                 payment.Id,
                 order.Id,
                 paymentIntent.ClientSecret,
-                amount
+                amountInCents,
+                originalAmount,
+                discountAmount,
+                promoCodeUsed
             );
+
+            return _responseHandler.Success(paymentResponse, "Payment created successfully");
         }
-        catch (Exception)
+        catch (DbUpdateException ex)
         {
-            return new PaymentResponse(false, null, null, string.Empty, 0);
+            _logger.LogError(ex, "Database error while creating payment for ProductId={ProductId}", productId);
+            return _responseHandler.InternalServerError<PaymentResponse>("Database error occurred while creating payment");
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex, "Stripe error while creating payment for ProductId={ProductId}", productId);
+            return _responseHandler.BadRequest<PaymentResponse>("Payment processing error occurred");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while creating payment for ProductId={ProductId}", productId);
+            return _responseHandler.InternalServerError<PaymentResponse>("An unexpected error occurred while creating payment");
         }
     }
 
-    public async Task<PaymentResponse> BuyCartAsync(Guid cartId, BuyCartRequest request, CancellationToken cancellationToken = default)
+    public async Task<Response<PaymentResponse>> BuyCartAsync(Guid cartId, BuyCartRequest request, CancellationToken cancellationToken = default)
     {
         try
         {
+            _logger.LogInformation("BuyCartAsync called for CartId={CartId}, CustomerEmail={CustomerEmail}",
+                cartId, request.CustomerEmail);
+
             var cartItems = await _context.Set<CartItem>()
                 .Include(ci => ci.Product)
                 .Where(ci => ci.CartId == cartId)
@@ -108,19 +171,42 @@ public class PaymentService(PaymentIntentService paymentIntentService, AuthConte
 
             if (!cartItems.Any())
             {
-                return new PaymentResponse(false, null, null, string.Empty, 0);
+                _logger.LogWarning("Cart with ID {CartId} is empty or not found", cartId);
+                return _responseHandler.NotFound<PaymentResponse>("Cart is empty or not found");
             }
 
             foreach (var item in cartItems)
             {
                 if (item.Product.StockQuantity < item.Quantity)
                 {
-                    return new PaymentResponse(false, null, null, string.Empty, 0);
+                    _logger.LogWarning("Insufficient stock for ProductId={ProductId} in cart. Requested: {RequestedQuantity}, Available: {AvailableQuantity}",
+                        item.ProductId, item.Quantity, item.Product.StockQuantity);
+                    return _responseHandler.BadRequest<PaymentResponse>($"Insufficient stock for product: {item.Product.Name}");
                 }
             }
 
-            var totalAmount = cartItems.Sum(item => item.Product.Price * item.Quantity);
-            var amountInCents = (long)(totalAmount * 100);
+            var originalAmount = cartItems.Sum(item => item.Product.Price * item.Quantity);
+            var finalAmount = originalAmount;
+            decimal? discountAmount = null;
+            string? promoCodeUsed = null;
+
+            if (!string.IsNullOrWhiteSpace(request.PromoCode))
+            {
+                var (isValid, discountPercentage, message) = await _discountService.ValidatePromoCodeAsync(request.PromoCode);
+
+                if (!isValid)
+                {
+                    return _responseHandler.BadRequest<PaymentResponse>(message);
+                }
+
+                discountAmount = _discountService.CalculateDiscount(originalAmount, discountPercentage);
+                finalAmount = originalAmount - discountAmount.Value;
+                promoCodeUsed = request.PromoCode.Trim().ToUpper();
+
+                _logger.LogInformation("Cart discount applied: {DiscountAmount} ({DiscountPercentage}%) for PromoCode={PromoCode}",
+                    discountAmount, discountPercentage, promoCodeUsed);
+            }
+            var amountInCents = (long)(finalAmount * 100);
 
             var options = new PaymentIntentCreateOptions
             {
@@ -131,18 +217,21 @@ public class PaymentService(PaymentIntentService paymentIntentService, AuthConte
                 {
                     ["cart_id"] = cartId.ToString(),
                     ["customer_email"] = request.CustomerEmail,
-                    ["items_count"] = cartItems.Count.ToString()
+                    ["items_count"] = cartItems.Count.ToString(),
+                    ["original_amount"] = originalAmount.ToString(),
+                    ["final_amount"] = finalAmount.ToString(),
+                    ["promo_code"] = promoCodeUsed ?? "",
+                    ["discount_amount"] = discountAmount?.ToString() ?? "0"
                 }
             };
 
             var paymentIntent = await _paymentIntentService.CreateAsync(options, null, cancellationToken);
 
-
             var order = new Entities.Models.Order
             {
                 BuyerId = request.CustomerEmail,
                 Status = OrderStatus.Pending,
-                TotalPrice = totalAmount,
+                TotalPrice = finalAmount,
                 OrderDate = DateTime.UtcNow
             };
 
@@ -160,8 +249,11 @@ public class PaymentService(PaymentIntentService paymentIntentService, AuthConte
             }
 
             var payment = new Payment
-            { 
-                Amount = totalAmount,
+            {
+                Amount = finalAmount,
+                OriginalAmount = originalAmount,
+                DiscountAmount = discountAmount,
+                PromoCodeUsed = promoCodeUsed,
                 Currency = "USD",
                 Status = Status.Pending,
                 StripePaymentIntentId = paymentIntent.Id,
@@ -174,93 +266,168 @@ public class PaymentService(PaymentIntentService paymentIntentService, AuthConte
             await _context.Payments.AddAsync(payment, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
 
-            return new PaymentResponse(
+            _logger.LogInformation("Payment created successfully for cart. PaymentId={PaymentId}, OrderId={OrderId}",
+                payment.Id, order.Id);
+
+            var paymentResponse = new PaymentResponse(
                 true,
                 payment.Id,
                 order.Id,
                 paymentIntent.ClientSecret,
-                totalAmount
+                finalAmount,
+                discountAmount.HasValue ? originalAmount : null,
+                discountAmount,
+                promoCodeUsed
             );
+
+            return _responseHandler.Success(paymentResponse, "Cart payment created successfully");
         }
-        catch (Exception)
+        catch (DbUpdateException ex)
         {
-            return new PaymentResponse(false, null, null, string.Empty, 0);
+            _logger.LogError(ex, "Database error while creating payment for CartId={CartId}", cartId);
+            return _responseHandler.InternalServerError<PaymentResponse>("Database error occurred while creating payment");
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex, "Stripe error while creating payment for CartId={CartId}", cartId);
+            return _responseHandler.BadRequest<PaymentResponse>("Payment processing error occurred");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while creating payment for CartId={CartId}", cartId);
+            return _responseHandler.InternalServerError<PaymentResponse>("An unexpected error occurred while creating payment");
         }
     }
 
-    public async Task<PaymentStatusResponse> ConfirmPaymentAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Response<PaymentStatusResponse>> ConfirmPaymentAsync(Guid id, CancellationToken cancellationToken = default)
     {
         try
         {
+            _logger.LogInformation("ConfirmPaymentAsync called for PaymentId={PaymentId}", id);
+
             var payment = await _context.Payments
                 .Include(p => p.Order)
                 .SingleOrDefaultAsync(p => p.Id.Equals(id), cancellationToken);
 
             if (payment is null)
             {
-                return new PaymentStatusResponse(false, "Payment not found", null);
+                _logger.LogWarning("Payment with ID {PaymentId} not found", id);
+                return _responseHandler.NotFound<PaymentStatusResponse>("Payment not found");
             }
 
-            var paymentIntent = await _paymentIntentService.GetAsync(payment.StripePaymentIntentId, null, cancellationToken:cancellationToken);
+            var paymentIntent = await _paymentIntentService.GetAsync(payment.StripePaymentIntentId, null, cancellationToken: cancellationToken);
 
             var newStatus = paymentIntent.Status switch
             {
                 "succeeded" => Status.Completed,
                 "canceled" => Status.Cancelled,
                 "requires_payment_method" => Status.Failed,
-                _ => Status.Pending // default  تمام 
+                "payment_failed" => Status.Failed,
+                _ => Status.Pending
             };
 
             payment.Status = newStatus;
 
-       
             if (newStatus == Status.Completed && payment.Order != null)
             {
                 payment.Order.Status = OrderStatus.Confirmed;
+                _logger.LogInformation("Payment {PaymentId} completed successfully. Order {OrderId} status updated to Confirmed",
+                    payment.Id, payment.Order.Id);
             }
-            else if (newStatus == Status.Cancelled && payment.Order != null)
+            else if ((newStatus == Status.Cancelled || newStatus == Status.Failed) && payment.Order != null)
             {
                 payment.Order.Status = OrderStatus.Cancelled;
+                _logger.LogInformation("Payment {PaymentId} failed/cancelled. Order {OrderId} status updated to Cancelled",
+                    payment.Id, payment.Order.Id);
             }
 
             await _context.SaveChangesAsync(cancellationToken);
 
-            return new PaymentStatusResponse(
+            var statusResponse = new PaymentStatusResponse(
                 newStatus == Status.Completed,
                 paymentIntent.Status,
                 payment.OrderId
             );
+
+            string message = newStatus switch
+            {
+                Status.Completed => "Payment confirmed successfully",
+                Status.Failed => "Payment confirmation failed",
+                Status.Cancelled => "Payment was cancelled",
+                _ => "Payment is still processing"
+            };
+
+            return newStatus == Status.Completed
+                ? _responseHandler.Success(statusResponse, message)
+                : _responseHandler.BadRequest<PaymentStatusResponse>(message);
         }
-        catch (Exception)
+        catch (StripeException ex)
         {
-            return new PaymentStatusResponse(false, "Error confirming payment", null);
+            _logger.LogError(ex, "Stripe error while confirming payment {PaymentId}", id);
+            return _responseHandler.BadRequest<PaymentStatusResponse>("Error communicating with payment processor");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while confirming payment {PaymentId}", id);
+            return _responseHandler.InternalServerError<PaymentStatusResponse>("An unexpected error occurred while confirming payment");
         }
     }
 
-    public async Task<PaymentStatusResponse> GetPaymentStatusAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Response<PaymentStatusResponse>> GetPaymentStatusAsync(Guid id, CancellationToken cancellationToken = default)
     {
         try
         {
+            _logger.LogInformation("GetPaymentStatusAsync called for PaymentId={PaymentId}", id);
+
             var payment = await _context.Payments
                 .AsNoTracking()
                 .SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
 
             if (payment is null)
             {
-                return new PaymentStatusResponse(false, "Payment not found", null);
+                _logger.LogWarning("Payment with ID {PaymentId} not found", id);
+                return _responseHandler.NotFound<PaymentStatusResponse>("Payment not found");
             }
 
             var paymentIntent = await _paymentIntentService.GetAsync(payment.StripePaymentIntentId, null, cancellationToken: cancellationToken);
 
-            return new PaymentStatusResponse(
-                paymentIntent.Status == Status.Completed.ToString(),
+            var statusResponse = new PaymentStatusResponse(
+                paymentIntent.Status == "succeeded",
                 paymentIntent.Status,
                 payment.OrderId
             );
+
+            return _responseHandler.Success(statusResponse, "Payment status retrieved successfully");
         }
-        catch (Exception)
+        catch (StripeException ex)
         {
-            return new PaymentStatusResponse(false, "Error getting payment status", null);
+            _logger.LogError(ex, "Stripe error while getting payment status {PaymentId}", id);
+            return _responseHandler.BadRequest<PaymentStatusResponse>("Error communicating with payment processor");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while getting payment status {PaymentId}", id);
+            return _responseHandler.InternalServerError<PaymentStatusResponse>("An unexpected error occurred while getting payment status");
+        }
+    }
+    public async Task<Response<ValidatePromoResponse>> ValidatePromoCodeAsync(ValidatePromoRequest request, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("ValidatePromoCodeAsync called for PromoCode={PromoCode}", request.PromoCode);
+
+            var (isValid, discountPercentage, message) = await _discountService.ValidatePromoCodeAsync(request.PromoCode);
+
+            var response = new ValidatePromoResponse(isValid, discountPercentage, message);
+
+            return isValid
+                ? _responseHandler.Success(response, message)
+                : _responseHandler.BadRequest<ValidatePromoResponse>(message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating promo code {PromoCode}", request.PromoCode);
+            return _responseHandler.InternalServerError<ValidatePromoResponse>("Error validating promo code");
         }
     }
 }

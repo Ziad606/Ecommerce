@@ -9,7 +9,12 @@
 *.user
 *.userosscache
 *.sln.docstates
-
+# ====== Backend (ASP.NET) ======
+appsettings.json
+appsettings.Development.json
+appsettings.*.json
+secrets.json
+**/Properties/launchSettings.json
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
@@ -361,3 +366,4 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/BackEnd/EcommercePlatform/appsettings.json

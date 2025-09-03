@@ -10,5 +10,8 @@ public class BuyCartRequestValidator : AbstractValidator<BuyCartRequest>
         RuleFor(x => x.CustomerEmail)
             .NotEmpty().WithMessage("Customer email is required.")
             .EmailAddress().WithMessage("Invalid email format.");
+        RuleFor(x => x.PromoCode)
+            .NotEmpty()
+            .WithMessage("promo code not valid.");
     }
 }

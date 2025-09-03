@@ -6,5 +6,6 @@ using System.Threading.Tasks;
 
 namespace Ecommerce.Entities.DTO.Payments.Requests;
 public record BuyCartRequest(
-    string CustomerEmail
-); // Guid CartId in route
+    string CustomerEmail,
+    string? PromoCode
+);

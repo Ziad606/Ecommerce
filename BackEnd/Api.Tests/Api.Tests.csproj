@@ -7,6 +7,7 @@
 
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <UserSecretsId>5795e669-dd35-4b95-b920-0ef12e54a419</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,7 +19,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\DataAccess.Tests\DataAccess.Tests.csproj" />
     <ProjectReference Include="..\EcommercePlatform\Ecommerce.API.csproj" />
   </ItemGroup>
 

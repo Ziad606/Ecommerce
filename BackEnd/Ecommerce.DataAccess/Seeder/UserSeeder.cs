@@ -18,12 +18,13 @@ namespace Ecommerce.DataAccess.Seeder
                     UserName = "admin",
                     Email = "zezomohammed390@gmail.com",
                     PhoneNumber = "01224309198",
-                    EmailConfirmed = true,FirstName = "John",
+                    EmailConfirmed = true,
+                    FirstName = "John",
                     LastName = "Administrator",
                     DateOfBirth = new DateTime(1985, 5, 15),
-                    Gender = "Male",
-                    DefaultShippingAddress = "123 Admin Street, Business District, Cairo, Egypt",
-                    DefaultBillingAddress = "123 Admin Street, Business District, Cairo, Egypt",
+                    //Gender = "Male",
+                    //DefaultShippingAddress = "123 Admin Street, Business District, Cairo, Egypt",
+                    //DefaultBillingAddress = "123 Admin Street, Business District, Cairo, Egypt",
                     IsActive = true,
                     IsDeleted = false,
                     CreatedAt = baseDate,
@@ -34,8 +35,8 @@ namespace Ecommerce.DataAccess.Seeder
                 };
                 await _userManager.CreateAsync(adminUser, "P@ssw0rd123Pass");
                 await _userManager.AddToRoleAsync(adminUser, "Admin");
-                
-                
+
+
                 var normalUser = new User
                 {
                     UserName = "Ziad",
@@ -44,9 +45,9 @@ namespace Ecommerce.DataAccess.Seeder
                     FirstName = "Ziad",
                     LastName = "Mohammed",
                     DateOfBirth = new DateTime(1990, 8, 22),
-                    Gender = "Male",
-                    DefaultShippingAddress = "456 Manager Avenue, New Cairo, Egypt",
-                    DefaultBillingAddress = "456 Manager Avenue, New Cairo, Egypt",
+                    //Gender = "Male",
+                    //DefaultShippingAddress = "456 Manager Avenue, New Cairo, Egypt",
+                    //DefaultBillingAddress = "456 Manager Avenue, New Cairo, Egypt",
                     IsActive = true,
                     IsDeleted = false,
                     CreatedAt = baseDate.AddDays(1),
@@ -56,7 +57,7 @@ namespace Ecommerce.DataAccess.Seeder
                     PhoneNumber = "+201234567891",
                     PhoneNumberConfirmed = true
                 };
-                
+
                 await _userManager.CreateAsync(normalUser, "P@ssw0rd123Pass");
                 await _userManager.AddToRoleAsync(normalUser, "User");
             }

@@ -15,6 +15,10 @@ public sealed class Payment
     public string StripePaymentIntentId { get; set; } = string.Empty;
     public string CustomerEmail { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    // discount property
+    public decimal OriginalAmount { get; set; } 
+    public decimal? DiscountAmount { get; set; } 
+    public string? PromoCodeUsed { get; set; } 
     public Guid? OrderId { get; set; }
     public Order? Order { get; set; }
 

@@ -22,6 +22,52 @@ namespace Ecommerce.DataAccess.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Ecommerce.Entities.Models.Advertisement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ImageLink")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ImageOrientation")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("Advertisements");
+                });
+
             modelBuilder.Entity("Ecommerce.Entities.Models.Auth.Identity.Role", b =>
                 {
                     b.Property<string>("Id")
@@ -69,16 +115,6 @@ namespace Ecommerce.DataAccess.Migrations
                     b.Property<DateTime?>("DateOfBirth")
                         .HasColumnType("date");
 
-                    b.Property<string>("DefaultBillingAddress")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("DefaultShippingAddress")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
@@ -90,11 +126,6 @@ namespace Ecommerce.DataAccess.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Gender")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
@@ -182,12 +213,7 @@ namespace Ecommerce.DataAccess.Migrations
                     b.HasIndex("FirstName", "LastName")
                         .HasDatabaseName("IX_Users_FullName");
 
-                    b.ToTable("Users", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_Users_DateOfBirth", "[DateOfBirth] <= GETDATE()");
-
-                            t.HasCheckConstraint("CK_Users_Gender", "[Gender] IN ('Male', 'Female', 'Other', 'PreferNotToSay')");
-                        });
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("Ecommerce.Entities.Models.Auth.UserTokens.UserRefreshToken", b =>
@@ -404,6 +430,51 @@ namespace Ecommerce.DataAccess.Migrations
                     b.HasIndex("OrderId", "ProductId");
 
                     b.ToTable("OrderItems");
+                });
+
+            modelBuilder.Entity("Ecommerce.Entities.Models.Payment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CustomerEmail")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PaymentMethodDetails")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StripePaymentIntentId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("Payments");
                 });
 
             modelBuilder.Entity("Ecommerce.Entities.Models.Product", b =>
@@ -727,6 +798,16 @@ namespace Ecommerce.DataAccess.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Ecommerce.Entities.Models.Advertisement", b =>
+                {
+                    b.HasOne("Ecommerce.Entities.Models.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("Ecommerce.Entities.Models.Auth.UserTokens.UserRefreshToken", b =>
                 {
                     b.HasOne("Ecommerce.Entities.Models.Auth.Identity.User", "User")
@@ -798,6 +879,15 @@ namespace Ecommerce.DataAccess.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("Ecommerce.Entities.Models.Payment", b =>
+                {
+                    b.HasOne("Ecommerce.Entities.Models.Order", "Order")
+                        .WithMany("Payments")
+                        .HasForeignKey("OrderId");
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("Ecommerce.Entities.Models.Product", b =>
                 {
                     b.HasOne("Ecommerce.Entities.Models.Category", "Category")
@@ -825,7 +915,7 @@ namespace Ecommerce.DataAccess.Migrations
                     b.HasOne("Ecommerce.Entities.Models.Auth.Identity.User", "Buyer")
                         .WithMany("Reviews")
                         .HasForeignKey("BuyerId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Ecommerce.Entities.Models.Order", "Order")
@@ -954,6 +1044,8 @@ namespace Ecommerce.DataAccess.Migrations
             modelBuilder.Entity("Ecommerce.Entities.Models.Order", b =>
                 {
                     b.Navigation("OrderItems");
+
+                    b.Navigation("Payments");
                 });
 
             modelBuilder.Entity("Ecommerce.Entities.Models.Product", b =>

@@ -306,7 +306,7 @@ namespace Ecommerce.Services.Implementations
                     return _responseHandler.NotFound<bool>("Cart item not found.");
                 }
 
-
+                _context.CartItems.Remove(cartItem);
                 cartItem.UpdatedAt = DateTime.UtcNow;
                 cartItem.Cart.UpdatedAt = DateTime.UtcNow;
 
@@ -349,10 +349,7 @@ namespace Ecommerce.Services.Implementations
                     return _responseHandler.Success(true, "Cart is already empty.");
                 }
 
-                foreach (var item in cart.CartItems)
-                {
-                    _context.CartItems.Remove(item);
-                }
+                _context.CartItems.RemoveRange(cart.CartItems);
 
                 cart.UpdatedAt = DateTime.UtcNow;
 

@@ -19,6 +19,7 @@ public class ProfileService(
     private readonly ILogger<ProfileService> _logger = logger;
     private readonly UserManager<User> _userManager = userManager;
 
+
     public async Task<Response<List<GetProfileAdminListResponse>>> GetAllProfilesAsync(CancellationToken cancellationToken = default)
     {
         try
@@ -138,5 +139,50 @@ public class ProfileService(
         }
     }
 
+
+    public async Task<Response<bool>> UpdateProfileAsync(string userId, UpdateProfileRequest request, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                _logger.LogWarning("User with ID {UserId} not found for profile update", userId);
+                return _responseHandler.NotFound<bool>("User not found.");
+            }
+
+            // Update fields only if provided
+            if (!string.IsNullOrWhiteSpace(request.Email))
+                user.Email = request.Email;
+
+            if (!string.IsNullOrWhiteSpace(request.FirstName))
+                user.FirstName = request.FirstName;
+
+            if (!string.IsNullOrWhiteSpace(request.LastName))
+                user.LastName = request.LastName;
+
+            if (request.DateOfBirth.HasValue)
+                user.DateOfBirth = request.DateOfBirth;
+
+            user.UpdatedAt = DateTime.UtcNow;
+
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+            {
+                _logger.LogError("Failed to update profile for UserId {UserId}. Errors: {Errors}",
+                    userId, string.Join(", ", result.Errors.Select(e => e.Description)));
+                return _responseHandler.BadRequest<bool>("Failed to update profile.");
+            }
+
+            _logger.LogInformation("Profile updated successfully for UserId {UserId}", userId);
+            return _responseHandler.Success(true, "Profile updated successfully.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error while updating profile");
+            return _responseHandler.InternalServerError<bool>("An error occurred while updating the profile.");
+        }
+    }
 
 }

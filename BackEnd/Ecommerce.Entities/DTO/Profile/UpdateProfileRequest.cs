@@ -1,0 +1,8 @@
+﻿namespace Ecommerce.Entities.DTO.Profile;
+public class UpdateProfileRequest
+{
+    public string? Email { get; set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public DateTime? DateOfBirth { get; set; }
+}

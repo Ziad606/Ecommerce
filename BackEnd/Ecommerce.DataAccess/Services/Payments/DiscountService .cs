@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Ecommerce.DataAccess.ApplicationContext;
 
 namespace Ecommerce.DataAccess.Services.Payments;
-public class DiscountService : IDiscountService
+public class DiscountService(AuthContext context) : IDiscountService
 {
-    private const string _validPromoCode = "SAVE20";
-    private const decimal _discountPercentage = 20m;
+    private readonly AuthContext _context = context;
 
     public async Task<(bool IsValid, decimal DiscountPercentage, string Message)> ValidatePromoCodeAsync(string promoCode)
     {
@@ -18,10 +13,10 @@ public class DiscountService : IDiscountService
         {
             return (false, 0, "Promo code is required");
         }
-
-        if (promoCode.Trim().Equals(_validPromoCode, StringComparison.CurrentCultureIgnoreCase))
+        var existingPromo = await _context.PromoCodes.FindAsync(promoCode.Trim());
+        if (existingPromo is not null)
         {
-            return (true, _discountPercentage, "Valid promo code applied");
+            return (true, existingPromo.DiscountPercentage, "Valid promo code applied");
         }
 
         return (false, 0, "Invalid promo code");

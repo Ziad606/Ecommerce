@@ -27,7 +27,7 @@ namespace Ecommerce.DataAccess.Services.Order
                 return _responseHandler.BadRequest<Guid>("Order data is required.");
             }
 
-            var buyer = await _context.Users.FirstOrDefaultAsync(u => u.Id.ToString() == dto.BuyerId.ToString());
+            var buyer = await _context.Users.FirstOrDefaultAsync(u => u.Id.ToString() == dto.BuyerId);
             if (buyer == null)
             {
                 _logger.LogWarning("Buyer with ID {BuyerId} not found.", dto.BuyerId);
@@ -41,6 +41,7 @@ namespace Ecommerce.DataAccess.Services.Order
                 BuyerId = dto.BuyerId,
                 OrderDate = DateTime.UtcNow,
                 Status = OrderStatus.Pending,
+                ShippingAddress = dto.ShippingCity + ", " + dto.ShippingState + ", " + dto.ShippingCountry + " " + dto.ShippingZipCode,
                 TotalPrice = 0,
 
             };
@@ -59,6 +60,14 @@ namespace Ecommerce.DataAccess.Services.Order
                 }
                 order.TotalPrice += product.Price * item.Quantity;
                 product.StockQuantity -= item.Quantity;
+
+                // Setting Shipping price if total price > 300
+                if(order.TotalPrice > 300) {
+                    order.ShippingPrice = 100;
+                } 
+                else {
+                    order.ShippingPrice = 0;
+                }
 
                 order.OrderItems.Add(new Entities.Models.OrderItem
                 {
@@ -236,16 +245,6 @@ namespace Ecommerce.DataAccess.Services.Order
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Restore stock 
-                foreach (var orderItem in order.OrderItems)
-                {
-                    var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == orderItem.ProductId && !p.IsDeleted);
-                    if (product != null)
-                    {
-                        product.StockQuantity += orderItem.Quantity;
-                    }
-                }
-
                 order.IsDeleted = true; // soft delete
                 //_context.Orders.Remove(order); // Cascade deletes OrderItems
                 await _context.SaveChangesAsync();
@@ -325,7 +324,7 @@ namespace Ecommerce.DataAccess.Services.Order
                 return _responseHandler.InternalServerError<GetOrdersResponse>("Failed to retrieve orders: " + ex.Message);
             }
         }
-        ///////
+
         public async Task<Response<OrderDetailsResponse>> UpdateOrderAsync(Guid id, UpdateOrderRequest dto)
         {
             try
@@ -361,9 +360,15 @@ namespace Ecommerce.DataAccess.Services.Order
                 var OrderDetailsResponse = new OrderDetailsResponse
                 {
                     OrderId = order.Id,
+                    BuyerName = order.Buyer.FirstName + " " + order.Buyer.LastName,
+                    Products = order.OrderItems.Select(item => new ProductItemDto
+                    {
+                        ProductName = item.Product.Name,
+                        ProdcutImage = item.Product.Images?.FirstOrDefault(o => o.IsPrimary),
+                        Quantity = item.Quantity
+                    }).ToList(),
                     Status = order.Status,
                     TotalPrice = order.TotalPrice,
-                    //ShippingPrice = order.ShippingPrice,
                     ShippingAddress = order.ShippingAddress,
                     CourierService = order.CourierService,
                     OrderDate = order.OrderDate
@@ -400,14 +405,17 @@ namespace Ecommerce.DataAccess.Services.Order
                 }
 
                 using var transaction = await _context.Database.BeginTransactionAsync(); // Begin Transaction
-
-                foreach (var orderItem in order.OrderItems)
+                
+                if(order.Status != OrderStatus.Delivered && order.Status != OrderStatus.Cancelled || order.Status == OrderStatus.Shipped)
+                {
+                    foreach (var orderItem in order.OrderItems)
                 {
                     var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == orderItem.ProductId);
                     if (product != null)
                     {
                         product.StockQuantity += orderItem.Quantity;
                     }
+                }
                 }
                 _context.Orders.Remove(order);  // Cascade delete removes OrderItems
                 await _context.SaveChangesAsync();

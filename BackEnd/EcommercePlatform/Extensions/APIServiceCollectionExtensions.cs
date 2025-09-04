@@ -83,11 +83,16 @@ namespace Ecommerce.API.Extensions
         }
         private static IServiceCollection AddSwagger(this IServiceCollection services)
         {
-            services.AddSwaggerGen(option =>
+            services.AddEndpointsApiExplorer();
+            services.AddSwaggerGen(options =>
             {
-                option.SwaggerDoc("v1", new OpenApiInfo { Title = "MV-Ecommerce", Version = "v1" });
+                options.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Title = "MV-E-Commerce",
+                    Description = "API for E-Commerce, a E-commerce Platform management system.",
+                });
 
-                option.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
                     In = ParameterLocation.Header,
                     Description = "Please enter a valid token",
@@ -97,7 +102,7 @@ namespace Ecommerce.API.Extensions
                     Scheme = "Bearer"
                 });
 
-                option.AddSecurityRequirement(new OpenApiSecurityRequirement
+                options.AddSecurityRequirement(new OpenApiSecurityRequirement
                 {
                     {
                         new OpenApiSecurityScheme
@@ -105,12 +110,14 @@ namespace Ecommerce.API.Extensions
                             Reference = new OpenApiReference
                             {
                                 Type = ReferenceType.SecurityScheme,
-                                Id = "Bearer"
+                                Id = JwtBearerDefaults.AuthenticationScheme
                             }
                         },
                         Array.Empty<string>()
                     }
                 });
+                var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+                options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
             });
             services
                 .AddControllers() 

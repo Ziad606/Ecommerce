@@ -44,6 +44,15 @@ public class ProductController(IProductService productService, ResponseHandler r
     }
 
 
+    [HttpGet("best-reviewed")]
+    public async Task<ActionResult<Response<List<GetProductResponse>>>> GetBestReviewProduct(CancellationToken cancellationToken)
+    {
+        var result = await _productService.GetBestReviewProductsAsync(cancellationToken);
+        return StatusCode((int)result.StatusCode, result);
+    }
+
+
+
 
     [HttpPut("{id:guid}")]
     [Authorize(Roles = "Admin")]

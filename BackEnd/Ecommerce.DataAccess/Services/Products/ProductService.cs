@@ -1,4 +1,3 @@
-using System.Linq.Expressions;
 using Ecommerce.DataAccess.ApplicationContext;
 using Ecommerce.DataAccess.Services.ImageUploading;
 using Ecommerce.Entities.DTO.Product;
@@ -11,11 +10,12 @@ using Ecommerce.Utilities.Enums;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Linq.Expressions;
 
 namespace Ecommerce.DataAccess.Services.Products;
 
-public class ProductService(AuthContext context ,
-    ResponseHandler responseHandler, 
+public class ProductService(AuthContext context,
+    ResponseHandler responseHandler,
     ILogger<ProductService> logger,
     IImageUploadService imageUploadService) : IProductService
 {
@@ -26,96 +26,96 @@ public class ProductService(AuthContext context ,
 
     public async Task<Response<Guid>> AddProductAsync(CreateProductRequest dto, CancellationToken cancellationToken)
     {
-            var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == dto.CategoryId);
-            if (category == null || category.IsDeleted)
+        var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == dto.CategoryId);
+        if (category == null || category.IsDeleted)
+        {
+            _logger.LogWarning(
+                "Category with ID {CategoryId} is either not found or deleted.",
+                dto.CategoryId);
+            return responseHandler.BadRequest<Guid>("Invalid category selected.");
+        }
+
+        var existingProduct = await _context.Products
+            .Include(p => p.Images)
+            .FirstOrDefaultAsync(p =>
+                p.Name.ToLower().Trim() == dto.Name.ToLower().Trim() &&
+                p.Description.ToLower().Trim() == dto.Description.ToLower().Trim() &&
+                p.Price == dto.Price &&
+                p.CategoryId == dto.CategoryId &&
+                !p.IsDeleted);
+
+
+        if (existingProduct != null)
+        {
+            existingProduct.StockQuantity += dto.StockQuantity;
+            _context.Products.Update(existingProduct);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Existing product {ProductId} stock increased by admin", existingProduct.Id);
+
+            return responseHandler.Success<Guid>(existingProduct.Id,
+                "Product already exists. Stock quantity has been updated.");
+        }
+
+        try
+        {
+            var productId = Guid.NewGuid();
+            var product = new Product
             {
-                _logger.LogWarning(
-                    "Category with ID {CategoryId} is either not found or deleted.",
-                    dto.CategoryId);
-                return responseHandler.BadRequest<Guid>("Invalid category selected.");
-            }
+                Id = productId,
+                Name = dto.Name?.Trim(),
+                Description = dto.Description?.Trim(),
+                Price = dto.Price,
+                CategoryId = dto.CategoryId,
+                Dimensions = dto.Dimensions?.Trim(),
+                Material = dto.Material?.Trim(),
+                SKU = dto.SKU?.Trim(),
+                StockQuantity = dto.StockQuantity,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true,
+                IsDeleted = false,
+                Images = new List<ProductImage>()
+            };
 
-            var existingProduct = await _context.Products
-                .Include(p => p.Images)
-                .FirstOrDefaultAsync(p =>
-                    p.Name.ToLower().Trim() == dto.Name.ToLower().Trim() &&
-                    p.Description.ToLower().Trim() == dto.Description.ToLower().Trim() &&
-                    p.Price == dto.Price &&
-                    p.CategoryId == dto.CategoryId &&
-                    !p.IsDeleted);
+            var images = await UploadImagesAsync(dto.Images, productId);
+            product.Images = images.ToList();
 
+            await _context.Products.AddAsync(product);
+            await _context.SaveChangesAsync();
 
-            if (existingProduct != null)
-            {
-                existingProduct.StockQuantity += dto.StockQuantity;
-                _context.Products.Update(existingProduct);
-                await _context.SaveChangesAsync();
+            _logger.LogInformation(
+                "Product {ProductId} created successfully by admin", productId);
 
-                _logger.LogInformation("Existing product {ProductId} stock increased by admin", existingProduct.Id);
-
-                return responseHandler.Success<Guid>(existingProduct.Id,
-                    "Product already exists. Stock quantity has been updated.");
-            }
-
-            try
-            {
-                var productId = Guid.NewGuid();
-                var product = new Product
-                {
-                    Id = productId,
-                    Name = dto.Name?.Trim(),
-                    Description = dto.Description?.Trim(),
-                    Price = dto.Price,
-                    CategoryId = dto.CategoryId,
-                    Dimensions = dto.Dimensions?.Trim(),
-                    Material = dto.Material?.Trim(),
-                    SKU = dto.SKU?.Trim(),
-                    StockQuantity = dto.StockQuantity,
-                    CreatedAt = DateTime.UtcNow,
-                    IsActive = true,
-                    IsDeleted = false,
-                    Images = new List<ProductImage>()
-                };
-
-                var images = await UploadImagesAsync(dto.Images, productId);
-                product.Images = images.ToList();
-
-                await _context.Products.AddAsync(product);
-                await _context.SaveChangesAsync();
-
-                _logger.LogInformation(
-                    "Product {ProductId} created successfully by admin", productId);
-
-                return responseHandler.Created(productId,
-                    "Product created successfully.");
-            }
-            catch (DbUpdateException ex)
-            {
-                _logger.LogError(ex, "Database error while creating product for admin");
-                return responseHandler.InternalServerError<Guid>(
-                    "Database error occurred while creating the product.");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error while creating product for admin");
-                return responseHandler.InternalServerError<Guid>(
-                    "An unexpected error occurred while creating the product.");
-            }   
+            return responseHandler.Created(productId,
+                "Product created successfully.");
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error while creating product for admin");
+            return responseHandler.InternalServerError<Guid>(
+                "Database error occurred while creating the product.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while creating product for admin");
+            return responseHandler.InternalServerError<Guid>(
+                "An unexpected error occurred while creating the product.");
+        }
     }
-    
-    public async Task<Response<PaginatedList<GetProductResponse>>> GetProductsAsync( Expression<Func<Product, bool>> predicate , ProductFilters<ProductSorting> filters,CancellationToken cancellationToken)
+
+    public async Task<Response<PaginatedList<GetProductResponse>>> GetProductsAsync(Expression<Func<Product, bool>> predicate, ProductFilters<ProductSorting> filters, CancellationToken cancellationToken)
     {
         if (filters?.CategoryId.HasValue == true)
         {
             predicate = p => !p.IsDeleted && p.CategoryId == filters.CategoryId;
         }
 
-        var source =  _context.Products
+        var source = _context.Products
             .Where(predicate)
             .Include(p => p.Images)
             .Include(p => p.Category)
             .AsQueryable();
-        
+
         var filteredList = FilteredListItems(source, filters!)
             .Select(p => new GetProductResponse
             {
@@ -133,10 +133,10 @@ public class ProductService(AuthContext context ,
                 CreatedAt = p.CreatedAt,
                 ImageUrls = p.Images.Select(img => img.ImageUrl).ToList()
             });
-            
+
         var result = await PaginatedList<GetProductResponse>.CreateAsync(filteredList, filters.PageNumber, filters.PageSize, cancellationToken);
-        
-        
+
+
 
         return _responseHandler.Success(result, "Products retrieved successfully.");
     }
@@ -174,77 +174,77 @@ public class ProductService(AuthContext context ,
         return _responseHandler.Success(result, "Product retrieved successfully.");
     }
     public async Task<Response<Guid>> UpdateProductAsync(Guid productId, UpdateProductRequest dto, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("UpdateProductAsync called for ProductId={ProductId}",
+            productId);
+
+        try
         {
-            _logger.LogInformation("UpdateProductAsync called for ProductId={ProductId}",
-                productId);
+            var product = await _context.Products
+                .Include(p => p.Images)
+                .FirstOrDefaultAsync(p => p.Id == productId, cancellationToken);
 
-            try
+            if (product == null)
             {
-                var product = await _context.Products
-                    .Include(p => p.Images)
-                    .FirstOrDefaultAsync(p => p.Id == productId, cancellationToken);
-
-                if (product == null)
-                {
-                    _logger.LogWarning(
-                        "Product update failed: ProductId={ProductId} not found",
-                        productId);
-                    return _responseHandler.NotFound<Guid>("Product not found");
-                }
-
-                if (product.Name != dto.Name?.Trim())
-                {
-                    _logger.LogInformation("ProductId={ProductId} Name changed from '{Old}' to '{New}'",
-                        product.Id, product.Name, dto.Name);
-                    product.Name = dto.Name.Trim();
-                }
-
-                if (dto.Price.HasValue && dto.Price.Value != product.Price)
-                {
-                    _logger.LogInformation("ProductId={ProductId} Price changed from {Old} to {New}", product.Id,
-                        product.Price, dto.Price.HasValue);
-                    product.Price = dto.Price.Value;
-                }
-
-                if (dto.StockQuantity.HasValue && dto.StockQuantity.Value != product.StockQuantity)
-                {
-                    _logger.LogInformation("ProductId={ProductId} StockQuantity changed from {Old} to {New}",
-                        product.Id, product.StockQuantity, dto.StockQuantity.Value);
-
-                    product.StockQuantity = dto.StockQuantity.Value;
-                }
-
-
-                if (!string.IsNullOrWhiteSpace(dto.Description) && dto.Description != product.Description)
-                {
-                    _logger.LogInformation("ProductId={ProductId} Description updated", product.Id);
-                    product.Description = dto.Description.Trim();
-                }
-
-                if (dto.Images != null && dto.Images.Any())
-                {
-                    var uploadedImages = await ReplaceProductImagesAsync(product.Id, dto.Images);
-                    product.Images = uploadedImages.ToList();
-                }
-
-                product.UpdatedAt = DateTime.UtcNow;
-
-
-                await _context.SaveChangesAsync();
-
-                _logger.LogInformation("ProductId={ProductId} updated successfully", product.Id);
-
-                return _responseHandler.Success<Guid>(product.Id, "Product updated successfully.");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "An error occurred while updating ProductId={ProductId}",
+                _logger.LogWarning(
+                    "Product update failed: ProductId={ProductId} not found",
                     productId);
-                return _responseHandler.InternalServerError<Guid>("An error occurred while updating the product.");
+                return _responseHandler.NotFound<Guid>("Product not found");
             }
 
-        }    
-    
+            if (product.Name != dto.Name?.Trim())
+            {
+                _logger.LogInformation("ProductId={ProductId} Name changed from '{Old}' to '{New}'",
+                    product.Id, product.Name, dto.Name);
+                product.Name = dto.Name.Trim();
+            }
+
+            if (dto.Price.HasValue && dto.Price.Value != product.Price)
+            {
+                _logger.LogInformation("ProductId={ProductId} Price changed from {Old} to {New}", product.Id,
+                    product.Price, dto.Price.HasValue);
+                product.Price = dto.Price.Value;
+            }
+
+            if (dto.StockQuantity.HasValue && dto.StockQuantity.Value != product.StockQuantity)
+            {
+                _logger.LogInformation("ProductId={ProductId} StockQuantity changed from {Old} to {New}",
+                    product.Id, product.StockQuantity, dto.StockQuantity.Value);
+
+                product.StockQuantity = dto.StockQuantity.Value;
+            }
+
+
+            if (!string.IsNullOrWhiteSpace(dto.Description) && dto.Description != product.Description)
+            {
+                _logger.LogInformation("ProductId={ProductId} Description updated", product.Id);
+                product.Description = dto.Description.Trim();
+            }
+
+            if (dto.Images != null && dto.Images.Any())
+            {
+                var uploadedImages = await ReplaceProductImagesAsync(product.Id, dto.Images);
+                product.Images = uploadedImages.ToList();
+            }
+
+            product.UpdatedAt = DateTime.UtcNow;
+
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("ProductId={ProductId} updated successfully", product.Id);
+
+            return _responseHandler.Success<Guid>(product.Id, "Product updated successfully.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while updating ProductId={ProductId}",
+                productId);
+            return _responseHandler.InternalServerError<Guid>("An error occurred while updating the product.");
+        }
+
+    }
+
     public async Task<Response<bool>> DeleteProductAsync(Guid productId, CancellationToken cancellationToken = default)
     {
         var product = await _context.Products
@@ -266,8 +266,44 @@ public class ProductService(AuthContext context ,
         return _responseHandler.Success(true,
             "Product deleted successfully and is no longer visible to buyers.");
     }
+    public async Task<Response<List<GetProductResponse>>> GetBestReviewProductsAsync(CancellationToken cancellationToken = default)
+    {
+        var products = await _context.Products
+            .Include(p => p.Images)
+            .Include(p => p.Category)
+            .OrderByDescending(p => p.Reviews.Any() ? p.Reviews.Average(r => r.Rating) : 0) // avoid empty reviews issue
+            .Take(10)
+            .ToListAsync(cancellationToken);
 
-    
+        if (!products.Any())
+        {
+            return _responseHandler.NotFound<List<GetProductResponse>>("No products found.");
+        }
+
+        var productResponses = products.Select(product => new GetProductResponse
+        {
+            Id = product.Id,
+            Name = product.Name,
+            Description = product.Description,
+            Price = product.Price,
+            CategoryId = product.CategoryId,
+            CategoryName = product.Category.Name,
+            Dimensions = product.Dimensions!,
+            Material = product.Material!,
+            SKU = product.SKU!,
+            StockQuantity = product.StockQuantity,
+            IsActive = product.IsActive,
+            CreatedAt = product.CreatedAt,
+            ImageUrls = product.Images.Select(img => img.ImageUrl).ToList(),
+            AverageRating = product.Reviews.Any() ? product.Reviews.Average(r => r.Rating) : (double?)null,
+            ReviewCount = product.Reviews.Count
+        }).ToList();
+
+        return _responseHandler.Success(productResponses, "Top 10 best reviewed products retrieved successfully.");
+    }
+
+
+
     private async Task<IList<ProductImage>> UploadImagesAsync(IEnumerable<IFormFile> files, Guid productId)
     {
         var images = new List<ProductImage>();
@@ -307,33 +343,33 @@ public class ProductService(AuthContext context ,
 
         return images;
     }
-    
+
     private IQueryable<Product> FilteredListItems<TSorting>(IQueryable<Product> query, ProductFilters<TSorting> filters)
         where TSorting : struct, Enum
     {
-        
-        
-        if(filters.PriceStart.HasValue)
-            query = query.Where(p => p.Price >= filters.PriceStart.Value);
-        
-        if(filters.PriceEnd.HasValue)
-            query = query.Where(p => p.Price <= filters.PriceEnd.Value);
-        
 
-        
+
+        if (filters.PriceStart.HasValue)
+            query = query.Where(p => p.Price >= filters.PriceStart.Value);
+
+        if (filters.PriceEnd.HasValue)
+            query = query.Where(p => p.Price <= filters.PriceEnd.Value);
+
+
+
         if (!string.IsNullOrWhiteSpace(filters.SearchValue))
         {
             var searchValue = filters.SearchValue.ToLower().Trim();
-            query = query.Where(p => 
+            query = query.Where(p =>
                 p.Name.Contains(searchValue, StringComparison.CurrentCultureIgnoreCase) ||
                 p.Description.Contains(searchValue, StringComparison.CurrentCultureIgnoreCase) ||
                 p.SKU!.Contains(searchValue, StringComparison.CurrentCultureIgnoreCase) ||
                 p.Category.Name.Contains(searchValue, StringComparison.CurrentCultureIgnoreCase));
-            
+
             _logger.LogInformation("Filtering products by search value: {SearchValue}", filters.SearchValue);
         }
 
-        
+
         if (filters.SortColumn is not null)
         {
             query = ApplySorting(query, filters.SortColumn.Value, filters.SortDirection);
@@ -343,7 +379,7 @@ public class ProductService(AuthContext context ,
         {
             query = query.OrderByDescending(o => o.CreatedAt);
         }
-        
+
         return query;
     }
 
@@ -359,70 +395,70 @@ public class ProductService(AuthContext context ,
             _ => query.OrderByDescending(p => p.CreatedAt)
         };
     }
-    
+
     private async Task<IList<ProductImage>> ReplaceProductImagesAsync(Guid productId, IEnumerable<IFormFile> files)
+    {
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
+        try
         {
-            await using var transaction = await _context.Database.BeginTransactionAsync();
+            var existingImages = await _context.ProductImages
+                .Where(i => i.ProductId == productId)
+                .ToListAsync();
 
-            try
+            var newImages = new List<ProductImage>();
+            bool isFirst = true;
+
+            foreach (var file in files)
             {
-                var existingImages = await _context.ProductImages
-                    .Where(i => i.ProductId == productId)
-                    .ToListAsync();
+                var uploadResult = await _imageUploadService.UploadAsync(file);
 
-                var newImages = new List<ProductImage>();
-                bool isFirst = true;
-
-                foreach (var file in files)
+                if (string.IsNullOrWhiteSpace(uploadResult))
                 {
-                    var uploadResult = await _imageUploadService.UploadAsync(file);
-
-                    if (string.IsNullOrWhiteSpace(uploadResult))
-                    {
-                        _logger.LogError("Upload failed for image: {FileName}", file.FileName);
-                        throw new Exception($"Failed to upload image {file.FileName}");
-                    }
-
-                    newImages.Add(new ProductImage
-                    {
-                        ProductId = productId,
-                        ImageUrl = uploadResult,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow,
-                        IsPrimary = isFirst
-                    });
-
-                    isFirst = false;
+                    _logger.LogError("Upload failed for image: {FileName}", file.FileName);
+                    throw new Exception($"Failed to upload image {file.FileName}");
                 }
 
-
-                foreach (var oldImage in existingImages)
+                newImages.Add(new ProductImage
                 {
-                    if (!string.IsNullOrWhiteSpace(oldImage.ImageUrl))
+                    ProductId = productId,
+                    ImageUrl = uploadResult,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    IsPrimary = isFirst
+                });
+
+                isFirst = false;
+            }
+
+
+            foreach (var oldImage in existingImages)
+            {
+                if (!string.IsNullOrWhiteSpace(oldImage.ImageUrl))
+                {
+                    try
                     {
-                        try
-                        {
-                            await _imageUploadService.DeleteAsync(oldImage.ImageUrl);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Failed to delete image: {ImageUrl}", oldImage);
-                        }
+                        await _imageUploadService.DeleteAsync(oldImage.ImageUrl);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to delete image: {ImageUrl}", oldImage);
                     }
                 }
-
-                _context.ProductImages.RemoveRange(existingImages);
-                await _context.ProductImages.AddRangeAsync(newImages);
-
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-                return newImages;
             }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+
+            _context.ProductImages.RemoveRange(existingImages);
+            await _context.ProductImages.AddRangeAsync(newImages);
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return newImages;
         }
-    
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
 }

@@ -44,7 +44,7 @@ public class ProductController(IProductService productService, ResponseHandler r
     }
 
 
-    [HttpGet("best-reviewed")]
+    [HttpGet("top-rated")]
     public async Task<ActionResult<Response<List<GetProductResponse>>>> GetBestReviewProduct(CancellationToken cancellationToken)
     {
         var result = await _productService.GetBestReviewProductsAsync(cancellationToken);

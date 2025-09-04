@@ -142,6 +142,7 @@ namespace Ecommerce.DataAccess.Services.Order
                     UnitPrice = product.Price
                 });
             }
+            order.ShippingPrice = order.TotalPrice > 300 ? 100 : 0;
 
             await _context.Orders.AddAsync(order);
             await _context.SaveChangesAsync();
@@ -453,15 +454,15 @@ namespace Ecommerce.DataAccess.Services.Order
 
         private bool IsValidStatusTransition(OrderStatus currentStatus, OrderStatus newStatus)
         {
-            var validTransitions = new Dictionary<OrderStatus, OrderStatus[]>
-             {
-                { OrderStatus.Pending, new[] { OrderStatus.Shipped, OrderStatus.Cancelled } },
-                { OrderStatus.Shipped, new[] { OrderStatus.Delivered, OrderStatus.Cancelled } },
-                { OrderStatus.Delivered, new OrderStatus[] { } },
-                { OrderStatus.Cancelled, new OrderStatus[] { } }
-             };
+            if (currentStatus == newStatus)
+                return true; // no-op updates allowed
 
-            return validTransitions.TryGetValue(currentStatus, out var allowed) && allowed.Contains(newStatus);
+            // Cancellation is always allowed before Delivered
+            if (newStatus == OrderStatus.Cancelled && currentStatus != OrderStatus.Delivered)
+                return true;
+
+            // Otherwise allow only moving forward in the enum sequence
+            return (int)newStatus > (int)currentStatus;
         }
     }
 }

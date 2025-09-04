@@ -27,7 +27,6 @@ public class ProductController(IProductService productService, ResponseHandler r
     }
 
     [HttpGet("")]
-    [Authorize(Roles = "Admin,User")]
     public async Task<IActionResult> GetProducts([FromQuery] ProductFilters<ProductSorting> filters, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
@@ -38,7 +37,6 @@ public class ProductController(IProductService productService, ResponseHandler r
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Roles = "Admin,User")]
     public async Task<ActionResult<Response<GetProductResponse>>> GetProductById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _productService.GetProductByIdAsync(id, cancellationToken);

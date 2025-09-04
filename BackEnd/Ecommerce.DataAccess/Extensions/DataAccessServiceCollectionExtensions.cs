@@ -8,6 +8,7 @@ using Ecommerce.DataAccess.Services.OAuth;
 using Ecommerce.DataAccess.Services.Order;
 using Ecommerce.DataAccess.Services.OTP;
 using Ecommerce.DataAccess.Services.Products;
+using Ecommerce.DataAccess.Services.PromoCode;
 using Ecommerce.DataAccess.Services.Review;
 using Ecommerce.DataAccess.Services.Token;
 using Ecommerce.DataAccess.Services.Wishlist;
@@ -48,6 +49,7 @@ namespace Ecommerce.DataAccess.Extensions
             services.AddScoped<ICategoryService, CategoryService>();
             services.AddScoped<IAdvertisementService, AdvertisementService>();
             services.AddScoped<IReviewService, ReviewService>();
+            services.AddScoped<IPromoCodeService, PromoCodeService>();
 
 
             return services;

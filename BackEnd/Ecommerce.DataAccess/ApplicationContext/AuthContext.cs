@@ -37,5 +37,7 @@ namespace Ecommerce.DataAccess.ApplicationContext
         public DbSet<WishlistItem> WishlistItems { get; set; }
         public DbSet<Payment> Payments => Set<Payment>();
         public DbSet<Advertisement> Advertisements { get; set; }
+        public DbSet<PromoCode> PromoCodes { get; set; }
+
     }
 }

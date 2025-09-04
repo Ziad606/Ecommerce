@@ -47,8 +47,6 @@ public class Program
             return ConnectionMultiplexer.Connect(configuration);
         });
 
-        builder.Services.AddEndpointsApiExplorer();
-
         var app = builder.Build();
 
         //#region Seed User,Role Data
@@ -63,11 +61,9 @@ public class Program
         //}
         //#endregion
 
-        //if (app.Environment.IsDevelopment())
-        //{
-        app.UseSwagger();
+
+        app.MapSwagger(); // the same UseSwagger but thr latest version
         app.UseSwaggerUI();
-        //}
 
         app.UseHttpsRedirection();
         app.UseCors();

@@ -23,7 +23,7 @@ namespace Ecommerce.API.Controllers
 
         [HttpPost]
         [Authorize(Roles = "User")]
-        public async Task<IActionResult> CreateReview([FromBody] CreateReviewRequest dto)
+        public async Task<IActionResult> CreateReview([FromForm] CreateReviewRequest dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));

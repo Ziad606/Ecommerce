@@ -62,10 +62,12 @@ namespace Ecommerce.DataAccess.Services.Order
                 product.StockQuantity -= item.Quantity;
 
                 // Setting Shipping price if total price > 300
-                if(order.TotalPrice > 300) {
+                if (order.TotalPrice > 300)
+                {
                     order.ShippingPrice = 100;
-                } 
-                else {
+                }
+                else
+                {
                     order.ShippingPrice = 0;
                 }
 
@@ -270,6 +272,7 @@ namespace Ecommerce.DataAccess.Services.Order
             {
                 var queryable = _context.Orders
                     .Include(o => o.Buyer)
+                    .Include(o => o.OrderItems)
                     .AsQueryable();
 
                 // Filter by buyer ID if provided
@@ -296,14 +299,26 @@ namespace Ecommerce.DataAccess.Services.Order
                 // Apply pagination
                 var items = await queryable
                     .OrderByDescending(o => o.OrderDate)  // Default sort per API contract
-                    .Select(o => new OrderSummaryDto
+                    .Select(o => new OrderDetailsResponse
                     {
                         OrderId = o.Id,
                         BuyerName = o.Buyer.FirstName + " " + o.Buyer.LastName,
                         Status = o.Status,
-                        TotalPrice = o.TotalPrice
+                        TotalPrice = o.TotalPrice,
+                        ShippingAddress = o.ShippingAddress,
+                        CourierService = o.CourierService,
+                        OrderDate = o.OrderDate,
+                        Products = o.OrderItems.Select(item => new ProductItemDto
+                        {
+                            ProductName = item.Product.Name,
+                            ProdcutImage = item.Product.Images.FirstOrDefault(img => img.IsPrimary)!,
+                            Quantity = item.Quantity,
+                            UnitPrice = item.UnitPrice
+                        }).ToList()
                     })
                     .ToListAsync();
+
+
 
                 if (!items.Any())
                     return _responseHandler.NotFound<GetOrdersResponse>("No orders found.");
@@ -339,8 +354,10 @@ namespace Ecommerce.DataAccess.Services.Order
                     return _responseHandler.NotFound<OrderDetailsResponse>("Order not found.");
                 }
 
+
+                var isValid = IsValidStatusTransition(order.Status, dto.Status);
                 // Validate status transition
-                if (!IsValidStatusTransition(order.Status, dto.Status))
+                if (!isValid)
                 {
                     _logger.LogWarning("Invalid status transition from {CurrentStatus} to {NewStatus}.", order.Status, dto.Status);
                     return _responseHandler.BadRequest<OrderDetailsResponse>("Invalid status transition.");
@@ -405,17 +422,17 @@ namespace Ecommerce.DataAccess.Services.Order
                 }
 
                 using var transaction = await _context.Database.BeginTransactionAsync(); // Begin Transaction
-                
-                if(order.Status != OrderStatus.Delivered && order.Status != OrderStatus.Cancelled || order.Status == OrderStatus.Shipped)
+
+                if (order.Status != OrderStatus.Delivered && order.Status != OrderStatus.Cancelled || order.Status == OrderStatus.Shipped)
                 {
                     foreach (var orderItem in order.OrderItems)
-                {
-                    var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == orderItem.ProductId);
-                    if (product != null)
                     {
-                        product.StockQuantity += orderItem.Quantity;
+                        var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == orderItem.ProductId);
+                        if (product != null)
+                        {
+                            product.StockQuantity += orderItem.Quantity;
+                        }
                     }
-                }
                 }
                 _context.Orders.Remove(order);  // Cascade delete removes OrderItems
                 await _context.SaveChangesAsync();

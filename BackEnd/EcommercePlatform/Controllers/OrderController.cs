@@ -2,7 +2,6 @@
 using Ecommerce.Entities.DTO.Orders;
 using Ecommerce.Entities.Shared.Bases;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -11,7 +10,7 @@ namespace Ecommerce.API.Controllers
     [Route("api/[controller]")]
     [ApiController]
     public class OrderController(
-        IOrderService orderService,ResponseHandler responseHandler) : ControllerBase
+        IOrderService orderService, ResponseHandler responseHandler) : ControllerBase
     {
         private readonly IOrderService _orderService = orderService;
         private readonly ResponseHandler _responseHandler = responseHandler;
@@ -28,7 +27,7 @@ namespace Ecommerce.API.Controllers
 
         [HttpGet("admin")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetOrdersAsync([FromQuery]GetOrdersRequest dto)
+        public async Task<IActionResult> GetOrdersAsync([FromQuery] GetOrdersRequest dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
@@ -38,7 +37,7 @@ namespace Ecommerce.API.Controllers
         }
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> UpdateOrder(Guid id, [FromBody] UpdateOrderRequest request)
+        public async Task<IActionResult> UpdateOrder(Guid id, [FromForm] UpdateOrderRequest request)
         {
             if (!ModelState.IsValid)
                 return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));

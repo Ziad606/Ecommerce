@@ -1,7 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-using Ecommerce.Entities.Models.Reviews;
+﻿using Ecommerce.Entities.Models.Reviews;
 using Ecommerce.Utilities.Enums;
+using System.ComponentModel.DataAnnotations;
 
 namespace Ecommerce.Entities.Models
 {
@@ -24,22 +23,22 @@ namespace Ecommerce.Entities.Models
 
         public Category Category { get; set; }
 
-        public string? Dimensions { get; set; } 
+        public string? Dimensions { get; set; }
 
         public string? Material { get; set; }
 
         public string? SKU { get; set; }
 
         public int StockQuantity { get; set; }
-        
-        public StockStatus StockStatus { get; set; } = StockStatus.GoodStock; 
+
+        public StockStatus StockStatus { get; set; } = StockStatus.GoodStock;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? UpdatedAt { get; set; }
         public bool IsActive { get; set; }
         public bool IsDeleted { get; set; }
+        public double AverageRating { get; set; }
 
-       
 
         public List<ProductImage> Images { get; set; } = new List<ProductImage>();
 

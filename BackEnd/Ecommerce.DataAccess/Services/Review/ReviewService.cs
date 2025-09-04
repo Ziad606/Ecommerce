@@ -2,7 +2,6 @@
 
 using Ecommerce.DataAccess.ApplicationContext;
 using Ecommerce.Entities.DTO.Reviews;
-using Ecommerce.Entities.Models;
 using Ecommerce.Entities.Models.Reviews;
 using Ecommerce.Entities.Shared;
 using Ecommerce.Entities.Shared.Bases;

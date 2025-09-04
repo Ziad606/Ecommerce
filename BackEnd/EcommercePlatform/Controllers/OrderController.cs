@@ -102,7 +102,7 @@ namespace Ecommerce.API.Controllers
         {
             if (!ModelState.IsValid)
                 return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
-
+            ////
             var buyerId = HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(buyerId))
                 return Unauthorized();

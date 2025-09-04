@@ -61,14 +61,6 @@ namespace Ecommerce.DataAccess.Services.Order
                 order.TotalPrice += product.Price * item.Quantity;
                 product.StockQuantity -= item.Quantity;
 
-                // Setting Shipping price if total price > 300
-                if(order.TotalPrice > 300) {
-                    order.ShippingPrice = 100;
-                } 
-                else {
-                    order.ShippingPrice = 0;
-                }
-
                 order.OrderItems.Add(new Entities.Models.OrderItem
                 {
                     Id = Guid.NewGuid(),
@@ -78,6 +70,11 @@ namespace Ecommerce.DataAccess.Services.Order
                     UnitPrice = product.Price
                 });
             }
+            // Setting Shipping price if total price > 300
+
+            order.ShippingPrice = order.TotalPrice > 300 ? 100 : 0;
+
+
             await _context.Orders.AddAsync(order);
             await _context.SaveChangesAsync();
 
@@ -122,11 +119,18 @@ namespace Ecommerce.DataAccess.Services.Order
             foreach (var item in cart.Data.Items)
             {
                 var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == item.ProductId && !p.IsDeleted);
-                if (product == null || product.StockQuantity < item.Quantity)
+                if (product == null)
                 {
-                    _logger.LogWarning("Invalid product or insufficient stock for {ProductId}. Requested: {Requested}, Available: {Available}", item.ProductId, item.Quantity, product.StockQuantity);
-                    return _responseHandler.BadRequest<Guid>($"Invalid product or insufficient stock for {item.ProductId}.");
+                    _logger.LogWarning("Product {ProductId} not found.", item.ProductId);
+                    return _responseHandler.BadRequest<Guid>($"Product {item.ProductId} not found.");
                 }
+                if (product.StockQuantity < item.Quantity)
+                {
+                    _logger.LogWarning("Insufficient stock for product {ProductId}. Requested {Requested}, Available {Available}",
+                        item.ProductId, item.Quantity, product.StockQuantity);
+                    return _responseHandler.BadRequest<Guid>($"Insufficient stock for product {item.ProductId}.");
+                }
+
 
                 order.TotalPrice += product.Price * item.Quantity;
                 product.StockQuantity -= item.Quantity;
@@ -140,6 +144,9 @@ namespace Ecommerce.DataAccess.Services.Order
                     UnitPrice = product.Price
                 });
             }
+            // Setting Shipping price if total price > 300
+
+            order.ShippingPrice = order.TotalPrice > 300 ? 100 : 0;
 
             await _context.Orders.AddAsync(order);
             await _context.SaveChangesAsync();
@@ -285,10 +292,10 @@ namespace Ecommerce.DataAccess.Services.Order
                 if (query.Status.HasValue)
                     queryable = queryable.Where(o => o.Status == query.Status);
 
-                if (!string.IsNullOrEmpty(query.SearchTerm))
-                    queryable = queryable.Where(o => o.Id.ToString().Contains(query.SearchTerm) ||
-                                                     o.Buyer.FirstName.Contains(query.SearchTerm) ||
-                                                     o.Buyer.LastName.Contains(query.SearchTerm));
+                if (!string.IsNullOrEmpty(query.SearchValue))
+                    queryable = queryable.Where(o => o.Id.ToString().Contains(query.SearchValue) ||
+                                                     o.Buyer.FirstName.Contains(query.SearchValue) || 
+                                                     o.Buyer.LastName.Contains(query.SearchValue));
 
                 // Get total count for pagination
                 var totalItems = await queryable.CountAsync();
@@ -296,6 +303,8 @@ namespace Ecommerce.DataAccess.Services.Order
                 // Apply pagination
                 var items = await queryable
                     .OrderByDescending(o => o.OrderDate)  // Default sort per API contract
+                    .Skip((query.PageNumber - 1) * query.PageSize)
+                    .Take(query.PageSize)
                     .Select(o => new OrderSummaryDto
                     {
                         OrderId = o.Id,
@@ -331,6 +340,8 @@ namespace Ecommerce.DataAccess.Services.Order
             {
                 var order = await _context.Orders
                     .Include(o => o.Buyer)
+                    .Include(o => o.OrderItems)
+                        .ThenInclude(oi => oi.Product)
                     .FirstOrDefaultAsync(o => o.Id == id);
 
                 if (order == null)
@@ -364,7 +375,7 @@ namespace Ecommerce.DataAccess.Services.Order
                     Products = order.OrderItems.Select(item => new ProductItemDto
                     {
                         ProductName = item.Product.Name,
-                        ProdcutImage = item.Product.Images?.FirstOrDefault(o => o.IsPrimary),
+                        ProductImage = item.Product.Images?.FirstOrDefault(o => o.IsPrimary),
                         Quantity = item.Quantity
                     }).ToList(),
                     Status = order.Status,
@@ -406,7 +417,7 @@ namespace Ecommerce.DataAccess.Services.Order
 
                 using var transaction = await _context.Database.BeginTransactionAsync(); // Begin Transaction
                 
-                if(order.Status != OrderStatus.Delivered && order.Status != OrderStatus.Cancelled || order.Status == OrderStatus.Shipped)
+                if(order.Status == OrderStatus.Pending)
                 {
                     foreach (var orderItem in order.OrderItems)
                 {

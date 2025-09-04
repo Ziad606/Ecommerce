@@ -11,12 +11,12 @@ namespace Ecommerce.API.Controllers
     [Route("api/[controller]")]
     [ApiController]
     public class OrderController(
-        IOrderService productservice,ResponseHandler responseHandler) : ControllerBase
+        IOrderService orderService,ResponseHandler responseHandler) : ControllerBase
     {
-        private readonly IOrderService _orderService = productservice;
+        private readonly IOrderService _orderService = orderService;
         private readonly ResponseHandler _responseHandler = responseHandler;
 
-        [HttpPost("")]
+        [HttpPost("admin")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest request)
         {
@@ -26,9 +26,9 @@ namespace Ecommerce.API.Controllers
             return StatusCode((int)result.StatusCode, result);
         }
 
-        [HttpGet("")]
+        [HttpGet("admin")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetOrdersAsync(GetOrdersRequest dto)
+        public async Task<IActionResult> GetOrdersAsync([FromQuery]GetOrdersRequest dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(_responseHandler.HandleModelStateErrors(ModelState));
@@ -47,7 +47,7 @@ namespace Ecommerce.API.Controllers
             return StatusCode((int)result.StatusCode, result);
         }
 
-        [HttpDelete("{id}")]
+        [HttpDelete("admin/{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteOrder(Guid id, [FromBody] DeleteOrderRequest request)
         {
@@ -58,7 +58,7 @@ namespace Ecommerce.API.Controllers
             return StatusCode((int)result.StatusCode, result);
         }
 
-        [HttpPost("my")]
+        [HttpPost("")]
         [Authorize(Roles = "User")]
         public async Task<IActionResult> CreateMyOrder([FromBody] BuyerCreateOrderRequest request)
         {
@@ -69,7 +69,7 @@ namespace Ecommerce.API.Controllers
             return StatusCode((int)result.StatusCode, result);
         }
 
-        [HttpGet("my")]
+        [HttpGet("")]
         [Authorize(Roles = "User")]
         public async Task<IActionResult> GetMyOrders([FromQuery] GetOrdersRequest dto)
         {
@@ -80,7 +80,7 @@ namespace Ecommerce.API.Controllers
             return StatusCode((int)result.StatusCode, result);
         }
 
-        [HttpPost("cance/{id}")]
+        [HttpPost("cancel/{id}")]
         [Authorize(Roles = "User")]
         public async Task<IActionResult> CancelOrder(Guid id, [FromBody] DeleteOrderRequest request)
         {
@@ -95,7 +95,7 @@ namespace Ecommerce.API.Controllers
             return StatusCode((int)result.StatusCode, result);
         }
 
-        [Route("delete/{id}")]
+        [Route("{id}")]
         [HttpDelete]
         [Authorize(Roles = "User")]
         public async Task<IActionResult> DeleteOrderAsBuyer(Guid id, [FromBody] DeleteOrderRequest request)
